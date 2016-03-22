@@ -22,15 +22,19 @@ GNU General Public License for more details.
 from datetime import datetime, timedelta
 from decimal import Decimal
 from dateutil.relativedelta import relativedelta
+
+from django.db.models import Q
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils.translation import ugettext as _
 from django.utils import simplejson
 from django.core.urlresolvers import reverse
+
 from pygooglechart import PieChart3D
 from pygooglechart import Chart
 from pygooglechart import SimpleLineChart
 from pygooglechart import Axis
+
 from gestorpsi.util.views import get_object_or_None, color_rand
 from gestorpsi.admission.models import AdmissionReferral, ReferralChoice as AdmissionIndication
 from gestorpsi.client.models import Client
@@ -39,11 +43,14 @@ from gestorpsi.organization.models import Organization
 from gestorpsi.service.models import Service
 from gestorpsi.referral.models import Referral, Indication as ReferralIndication, IndicationChoice as ReferralIndicationChoice, ReferralDischargeReason, ReferralDischarge
 from gestorpsi.util.views import percentage
+from gestorpsi.financial.models import Receive
+from gestorpsi.schedule.models import ScheduleOccurrence
 
 VIEWS_CHOICES = (
     (1, _('Admisssions')),
     (2, _('Referrals')),
-    #(3, _('Schedules')),
+    (3, _('Faturamento')),
+    (4, _('Evento')),
 )
 
 PIE_CHART_WIDTH = 620
@@ -107,6 +114,426 @@ class Report(models.Model):
             return admission, chart_url, date_start,date_end
         
         return None, None, None, None
+
+
+    def get_event_(self, organization, date_start, date_end, professional, service, status, accumulated):
+
+        sch_list = [] # list of objects for each presence
+        '''
+            array to print each presence list
+            sch_list = []
+            sch_list[0] = []
+            sch_list[0][0] = label/line
+            sch_list[0][1] = ScheduleOccurrence.objects
+        '''
+
+        data = [] # main array for google pie char array
+        total_events = 0 # total of all events, show in resume
+        date_start , date_end = self.set_date(organization, date_start, date_end)
+
+        # filter by date range, all professional and all presence 
+        sch_objs = ScheduleOccurrence.objects.filter(start_time__gte=date_start, start_time__lte=date_end, event__referral__organization=organization).order_by('event__referral__client')
+
+        # professional
+        if not 'all' in professional:
+            sch_objs = sch_objs.filter( event__referral__professional__id=professional )
+
+        # service
+        if service:
+            sch_objs = sch_objs.filter( event__referral__service__id=service )
+
+        #
+        # filter by presence confirmation
+        #
+
+        # all presence options confirmed or none marked
+        if '999' in status or not status:
+            status = "1,2,3,4,5,6,888" # Filter for each presence id end "not confirmed"
+
+        if '1' in status:
+            l = sch_objs.filter( occurrenceconfirmation__presence=1 ).distinct()
+            sch_list.append([u'Cliente chegou no horário',l])
+            total_events += l.count()
+
+        if '2' in status:
+            l = sch_objs.filter( occurrenceconfirmation__presence=2 ).distinct()
+            sch_list.append([u'Cliente chegou atrasado',l])
+            total_events += l.count()
+
+        if '3' in status:
+            l = sch_objs.filter( occurrenceconfirmation__presence=3 ).distinct()
+            sch_list.append([u'Cliente não compareceu',l])
+            total_events += l.count()
+
+        if '4' in status:
+            l = sch_objs.filter( occurrenceconfirmation__presence=4 ).distinct()
+            sch_list.append([u'Evento desmarcado',l])
+            total_events += l.count()
+
+        if '5' in status:
+            l = sch_objs.filter( occurrenceconfirmation__presence=5 ).distinct()
+            sch_list.append([u'Evento remarcado',l])
+            total_events += l.count()
+
+        if '6' in status:
+            l = sch_objs.filter( occurrenceconfirmation__presence=6 ).distinct()
+            sch_list.append([u'Profissional não compareceu',l])
+            total_events += l.count()
+
+        # all not confirmed
+        if '888' in status:
+            l = sch_objs.filter(occurrenceconfirmation__isnull=True)
+            sch_list.append([u'Não confirmado',l])
+            total_events += l.count()
+
+        # all confirmed
+        if '777' in status:
+            l = sch_objs.filter(occurrenceconfirmation__isnull=False)
+            sch_list.append([u'Confirmado',l])
+            total_events += l.count()
+
+        #
+        # graphic google chart
+        #
+        lines = [] # label for google graphic lines
+
+        if '1' in status:
+            lines.append(u'Cliente chegou no horário')
+        if '2' in status:
+            lines.append(u'Cliente chegou atrasado')
+        if '3' in status:
+            lines.append(u'Cliente não compareceu')
+        if '4' in status:
+            lines.append(u'Evento desmarcado')
+        if '5' in status:
+            lines.append(u'Evento remarcado')
+        if '6' in status:
+            lines.append(u'Profissional não compareceu')
+        if '888' in status:
+            lines.append(u'Não confirmado')
+        if '777' in status:
+            lines.append(u'Confirmado')
+
+
+        def filter_range_date(presence):
+            ds = date_start
+            l = 0 # store last counter
+            t = []
+
+            while ds < date_end :
+                l += sch_objs.filter(occurrenceconfirmation__presence=presence, start_time__gte=ds, end_time__lte=ds+relativedelta(months=1)).count()
+                t.append( l )
+                ds += relativedelta(months=1)
+
+            return t
+
+
+        #
+        # accumulated 
+        #
+
+        if accumulated == 'True':
+
+                # tmp = []
+                # tmp = [ [presence counter] ]
+                # tmp = [ [0,10,25,50,100] , [presence1] , [presenceN] ]
+                tmp = []
+
+                if '1' in status:
+                    tmp.append( filter_range_date(1) )
+                if '2' in status:
+                    tmp.append( filter_range_date(2) )
+                if '3' in status:
+                    tmp.append( filter_range_date(3) )
+                if '4' in status:
+                    tmp.append( filter_range_date(4) )
+                if '5' in status:
+                    tmp.append( filter_range_date(5) )
+                if '6' in status:
+                    tmp.append( filter_range_date(6) )
+
+                # confirmed
+                if '777' in status:
+                    ds = date_start
+                    l = 0 # last
+                    t = [] # list of counter
+
+                    while ds < date_end :
+                        l += sch_objs.filter(occurrenceconfirmation__isnull=False, start_time__gte=ds, end_time__lte=ds+relativedelta(months=1)).count()
+                        t.append( l )
+                        ds += relativedelta(months=1)
+
+                    tmp.append(t)
+
+                # not confirmed
+                if '888' in status:
+                    ds = date_start
+                    l = 0 # last
+                    t = []
+
+                    while ds < date_end :
+                        l += sch_objs.filter(occurrenceconfirmation__isnull=True, start_time__gte=ds, end_time__lte=ds+relativedelta(months=1)).count()
+                        t.append( l )
+                        ds += relativedelta(months=1)
+
+                    tmp.append(t)
+
+                c = 0 # TMP array position
+                data = '([' # open
+                ds = date_start
+
+                while ds < date_end :
+
+                    t = ""
+                    for x in tmp:
+                        t += "%s," % x[c]
+
+                    tl = "[new Date(%s, %s), %s]," % (ds.year, ds.month, t)
+                    data += tl
+
+                    c += 1
+                    ds += relativedelta(months=1)
+
+                    del(tl)
+
+                data += '])' # close
+
+
+        #
+        # not accumulated 
+        #
+        if accumulated == 'False':
+
+            ds = date_start
+            data = '([' # open
+
+            while ds < date_end :
+                tmp = ""
+
+                if '1' in status:
+                    tmp += "%s," % sch_objs.filter(occurrenceconfirmation__presence=1, start_time__gte=ds, end_time__lte=ds+relativedelta(months=1)).count()
+
+                if '2' in status:
+                    tmp += "%s," % sch_objs.filter(occurrenceconfirmation__presence=2, start_time__gte=ds, end_time__lte=ds+relativedelta(months=1)).count()
+
+                if '3' in status:
+                    tmp += "%s," % sch_objs.filter(occurrenceconfirmation__presence=3, start_time__gte=ds, end_time__lte=ds+relativedelta(months=1)).count()
+
+                if '4' in status:
+                    tmp += "%s," % sch_objs.filter(occurrenceconfirmation__presence=4, start_time__gte=ds, end_time__lte=ds+relativedelta(months=1)).count()
+
+                if '5' in status:
+                    tmp += "%s," % sch_objs.filter(occurrenceconfirmation__presence=5, start_time__gte=ds, end_time__lte=ds+relativedelta(months=1)).count()
+
+                if '6' in status:
+                    tmp += "%s," % sch_objs.filter(occurrenceconfirmation__presence=6, start_time__gte=ds, end_time__lte=ds+relativedelta(months=1)).count()
+
+                # confirmed
+                if '777' in status:
+                    tmp += "%s," % sch_objs.filter(occurrenceconfirmation__isnull=False, start_time__gte=ds, end_time__lte=ds+relativedelta(months=1)).count()
+
+                # not confirmed
+                if '888' in status:
+                    tmp += "%s," % sch_objs.filter(occurrenceconfirmation__isnull=True, start_time__gte=ds, end_time__lte=ds+relativedelta(months=1)).count()
+
+                tl = "[new Date(%s, %s), %s]," % (ds.year, ds.month, tmp)
+                data += tl
+                del(tmp)
+                
+                ds += relativedelta(months=1)
+
+            data += '])' # close
+
+        # return
+        return data, lines, date_start, date_end, sch_list, total_events
+
+
+    def get_receive_(self, organization, date_start, date_end, professional, receive, service, pway, covenant ):
+        date_start , date_end = self.set_date(organization, date_start, date_end)
+
+        '''
+            data : array or False
+            data return False when no numbers to make a graphic
+            covenant : Covenant.id
+
+            PaymentWay hardcode
+                Dinheiro 1
+                Cheque 2
+                Cartão débito 3
+                Cartão crédito 4
+                Boleto 5
+                Depósito em conta 6
+        '''
+
+        data = []
+        receive_list = []
+        receive_ar = []
+        total_receive = 0
+        colors = []
+
+        # overview of all status
+        # date range, all professional and all services
+        aberto = Receive.objects.filter(status=0, created__gte=date_start, created__lte=date_end).filter( Q(occurrence__event__referral__client__person__organization=organization)| Q(referral__client__person__organization=organization) ).distinct().order_by('-created')
+
+        recebido = Receive.objects.filter(status=1, created__gte=date_start, created__lte=date_end).filter( Q(occurrence__event__referral__client__person__organization=organization)| Q(referral__client__person__organization=organization) ).distinct().order_by('-created')
+
+        faturado = Receive.objects.filter(status=2, created__gte=date_start, created__lte=date_end).filter( Q(occurrence__event__referral__client__person__organization=organization)| Q(referral__client__person__organization=organization) ).distinct().order_by('-created')
+
+        cancelado = Receive.objects.filter(status=3, created__gte=date_start, created__lte=date_end).filter( Q(occurrence__event__referral__client__person__organization=organization)| Q(referral__client__person__organization=organization) ).distinct().order_by('-created')
+
+        # professional
+        if not professional == 'all':
+            aberto = aberto.filter( Q( occurrence__event__referral__professional__id=professional )| Q( referral__professional__id=professional ) ).distinct()
+            recebido = recebido.filter( Q( occurrence__event__referral__professional__id=professional )| Q( referral__professional__id=professional ) ).distinct()
+            faturado = faturado.filter( Q( occurrence__event__referral__professional__id=professional )| Q( referral__professional__id=professional ) ).distinct()
+            cancelado = cancelado.filter( Q( occurrence__event__referral__professional__id=professional )| Q( referral__professional__id=professional ) ).distinct()
+
+        # covenant
+        if not covenant == 'all':
+            aberto = aberto.filter( covenant_id=covenant )
+            recebido = recebido.filter( covenant_id=covenant )
+            faturado = faturado.filter( covenant_id=covenant )
+            cancelado = cancelado.filter( covenant_id=covenant )
+
+        # payment_way 
+        if not pway == 'all':
+
+            if pway == '1':
+                aberto = aberto.filter(covenant_payment_way_selected__icontains='1').distinct()
+                recebido = recebido.filter(covenant_payment_way_selected__icontains='1').distinct()
+                faturado = faturado.filter(covenant_payment_way_selected__icontains='1').distinct()
+                cancelado = cancelado.filter(covenant_payment_way_selected__icontains='1').distinct()
+
+            if pway == '2':
+                aberto = aberto.filter(covenant_payment_way_selected__icontains='2').distinct()
+                recebido = recebido.filter(covenant_payment_way_selected__icontains='2').distinct()
+                faturado = faturado.filter(covenant_payment_way_selected__icontains='2').distinct()
+                cancelado = cancelado.filter(covenant_payment_way_selected__icontains='2').distinct()
+
+            if pway == '3':
+                aberto = aberto.filter(covenant_payment_way_selected__icontains='3').distinct()
+                recebido = recebido.filter(covenant_payment_way_selected__icontains='3').distinct()
+                faturado = faturado.filter(covenant_payment_way_selected__icontains='3').distinct()
+                cancelado = cancelado.filter(covenant_payment_way_selected__icontains='3').distinct()
+
+            if pway == '4':
+                aberto = aberto.filter(covenant_payment_way_selected__icontains='4').distinct()
+                recebido = recebido.filter(covenant_payment_way_selected__icontains='4').distinct()
+                faturado = faturado.filter(covenant_payment_way_selected__icontains='4').distinct()
+                cancelado = cancelado.filter(covenant_payment_way_selected__icontains='4').distinct()
+
+            if pway == '5':
+                aberto = aberto.filter(covenant_payment_way_selected__icontains='5').distinct()
+                recebido = recebido.filter(covenant_payment_way_selected__icontains='5').distinct()
+                faturado = faturado.filter(covenant_payment_way_selected__icontains='5').distinct()
+                cancelado = cancelado.filter(covenant_payment_way_selected__icontains='5').distinct()
+
+            if pway == '6':
+                aberto = aberto.filter(covenant_payment_way_selected__icontains='6').distinct()
+                recebido = recebido.filter(covenant_payment_way_selected__icontains='6').distinct()
+                faturado = faturado.filter(covenant_payment_way_selected__icontains='6').distinct()
+                cancelado = cancelado.filter(covenant_payment_way_selected__icontains='6').distinct()
+
+        if receive == 'all': # receive status
+
+            receive_ar = ['0','1','2','3'] # all
+
+            # graphic pizza
+            data.append( ['Aberto',aberto.count()] )
+            data.append( ['Recebido',recebido.count()] )
+            data.append( ['Faturado',faturado.count()] )
+            data.append( ['Cancelado',cancelado.count()] )
+
+            total_receive = aberto.count()+recebido.count()+faturado.count()+cancelado.count()
+
+            colors = ['red', 'green', 'orange', 'blue']
+
+        else:
+
+            if receive == '0':
+                receive_ar.append('0')
+                data.append( ['Aberto',aberto.count()] )
+                total_receive += aberto.count()
+                colors.append('red')
+
+            if receive == '1':
+                receive_ar.append('1')
+                data.append( ['Recebido',recebido.count()] )
+                total_receive += recebido.count()
+                colors.append('green')
+
+            if receive == '2':
+                receive_ar.append('2')
+                data.append( ['Faturado',faturado.count()] )
+                total_receive += faturado.count()
+                colors.append('orange')
+
+            if receive == '3':
+                receive_ar.append('3')
+                data.append( ['Cancelado',cancelado.count()] )
+                total_receive += cancelado.count()
+                colors.append('blue')
+
+
+        # filter by service
+        if not service == '':
+
+            if '0' in receive_ar :
+                aberto = aberto.filter(Q(occurrence__event__referral__service=service)|Q(referral__service=service) ).distinct()
+
+            if '1' in receive_ar :
+                recebido = recebido.filter(Q(occurrence__event__referral__service=service)|Q(referral__service=service) ).distinct()
+
+            if '2' in receive_ar :
+                faturado = faturado.filter(Q(occurrence__event__referral__service=service)|Q(referral__service=service) ).distinct()
+
+            if '3' in receive_ar :
+                cancelado = cancelado.filter(Q(occurrence__event__referral__service=service)|Q(referral__service=service) ).distinct()
+
+
+        # amount of earch status, total column
+        total_aberto = 0
+        for x in aberto:
+            total_aberto += x.total
+
+        total_recebido = 0
+        for x in recebido:
+            total_recebido += x.total
+
+        total_faturado = 0
+        for x in faturado:
+            total_faturado += x.total
+
+        total_cancelado = 0
+        for x in cancelado:
+            total_cancelado += x.total
+
+
+        '''
+            array
+                0 = Status label
+                1 = list of payment. Payment object
+                2 = color of status
+                3 = sum total of status
+        '''
+        # list of clients and counter %
+        if '0' in receive_ar :
+            receive_list.append( ['Aberto',aberto,'red',total_aberto] )
+
+        if '1' in receive_ar :
+            receive_list.append( ['Recebido',recebido,'green',total_recebido] )
+
+        if '2' in receive_ar :
+            receive_list.append( ['Faturado',faturado,'orange',total_faturado] )
+
+        if '3' in receive_ar :
+            receive_list.append( ['Cancelado',cancelado,'blue',total_cancelado] )
+
+        if total_receive == 0 :  # no data
+            data = False
+
+        return data, colors, date_start, date_end, receive_list, total_receive
+        
 
     def get_referral_range(self, organization, date_start, date_end, service, accumulated):
         """
@@ -982,7 +1409,7 @@ class ReportDemographicManager(models.Manager):
         total = len(client_pk_in)
 
         data.append({'name': _('Male'), 'total': male, 'percentage': percentage(male, total)})
-        data.append({'name': _('Female'), 'total': female, 'percentage': percentage(male, total)})
+        data.append({'name': _('Female'), 'total': female, 'percentage': percentage(female, total)})
         data.append({'name': _('Unknown'), 'total': unknown, 'percentage': percentage(unknown, total)})
 
         return data
@@ -1029,14 +1456,3 @@ class ReportReferral(object):
         abstract = True
 
     objects = ReportReferralManager()
-
-
-#>>> for m in MaritalStatus.objects.all():
-#...  print m, Client.objects.filter(person__maritalStatus=m).count()
-#... 
-#Casado(a) 0
-#Divorciado(a) 0
-#Separado(a) Judicial 2
-#Solteiro(a) 2
-#União Estável 1
-#Viúvo(a) 0

@@ -21,18 +21,25 @@ from gestorpsi.client.views import index, list, form, save, client_print, \
         referral_form, referral_discharge_form, schedule_daily, schedule_add, \
         occurrence_view, referral_occurrences, referral_plus_form, referral_plus_save, referral_queue, \
         referral_queue_save, referral_queue_remove, referral_ext_form, referral_ext_save, family, family_form, \
-        add_company, company_related, company_related_form
+        add_company, company_related, company_related_form, referral_occurrences_action
 from gestorpsi.online_messages.views import referral_messages, occurrence_chat, chat_message, update_chat_message, exit_chat, client_messages, new_message_topic, topic_messages, new_topic_message, chat_messages_history
 from gestorpsi.authentication.views import login_check
 from gestorpsi.organization.views import list_prof_org
 
 urlpatterns = patterns('',
-    (r'^$', login_check(index)), #list objects
+
+    # client list index and paginator 
+    (r'^$', login_check(index)), #index
     (r'^list/$', login_check(list)), #list objects
-    #(r'^page(?P<page>(\d)+)$', login_check(list)), #list objects
+    (r'^page(?P<page>(\d)+)$', login_check(list)), #list objects
     #(r'^initial/(?P<initial>[a-zA-Z])/page(?P<page>(\d)+)/$', login_check(list)), # quick filter
-    #(r'^filter/(?P<filter>\w+)/page(?P<page>(\d)+)/$', login_check(list)), # quick search
-    #(r'^filter/(?P<filter>\w+)/$', login_check(list), {'no_paging': True}), # quick search
+    url(r'^deactive/$', login_check(index), {'deactive': True} ), #list objects
+    url(r'^list/deactive/$', login_check(list), {'deactive': True}), #list objects
+
+    # client search person family, return JSON
+    #(r'^filter/(?P<filter>\w+)/page(?P<page>(\d)+)/$', login_check(list), {'no_paging': True, 'retrn':'json'}), # quick search
+    (r'^filter/(?P<filter>\w+)/$', login_check(list), {'no_paging': True, 'retrn':'json'}), # quick search
+
     (r'^add/$', login_check(add)), #new object form
     (r'^add/company/$', login_check(add_company)), #new object form
     (r'^(?P<object_id>[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/home/$', login_check(home)),
@@ -62,6 +69,7 @@ urlpatterns = patterns('',
     (r'^(?P<object_id>[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/referral/plus/save/$', login_check(referral_plus_save)), # referral add plus
     (r'^(?P<object_id>[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/referral/(?P<referral_id>\d+)/save/$', login_check(referral_save)), # referral save
     (r'^(?P<object_id>[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/referral/$', login_check(referral_list)), # charged referrals list
+    url(r'^(?P<object_id>[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/referral/(?P<referral_id>\d+)/action/$', login_check(referral_occurrences_action), name="referral-occurrences-action"), # uncheck a event or lot.
     (r'^(?P<object_id>[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/referral/(?P<referral_id>\d+)/(?P<type>upcoming)/$', login_check(referral_occurrences)), # upcoming occurences
     (r'^(?P<object_id>[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/referral/(?P<referral_id>\d+)/(?P<type>past)/$', login_check(referral_occurrences)), # past occurences
     (r'^(?P<object_id>[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/referral/(?P<discharged>discharged)/$', login_check(referral_list)), # descharged referrals list
@@ -90,13 +98,4 @@ urlpatterns = patterns('',
     (r'^(?P<object_id>[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/family/$', login_check(family)), # client family
     (r'^(?P<object_id>[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/family/form/$', login_check(family_form)), # client family
     (r'^(?P<object_id>[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/family/(?P<relation_id>\d+)/form/$', login_check(family_form)), # client family
-
-    # DEACTIVES
-    #(r'^deactive/$', login_check(index), {'deactive': True} ), #list objects
-    #(r'^page(?P<page>(\d)+)/deactive/$', login_check(list), {'deactive':True} ), #list objects
-    #(r'^initial/(?P<initial>[a-zA-Z])/page(?P<page>(\d)+)/deactive/$', login_check(list), {'deactive': True}), # quick filter
-    #(r'^filter/(?P<filter>\w+)/page(?P<page>(\d)+)/deactive/$', login_check(list), {'deactive': True}), # quick search
-    #(r'^filter/(?P<filter>\w+)/deactive/$', login_check(list), {'no_paging': True, 'deactive': True}), # quick search
-    url(r'^deactive/$', login_check(index), {'deactive': True} ), #list objects
-    url(r'^list/deactive/$', login_check(list), {'deactive': True}), #list objects
 )

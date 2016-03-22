@@ -30,37 +30,42 @@ from gestorpsi.internet.views import email_save, site_save, im_save
 from gestorpsi.util.decorators import permission_required_with_403
 from gestorpsi.careprofessional.models import Profession, CareProfessional
 from gestorpsi.util.views import get_object_or_None
-from gestorpsi.gcm.models import Invoice, INVOICE_STATUS_CHOICES
-from gestorpsi.gcm.models.plan import Plan
 
-from datetime import datetime, timedelta
-from gestorpsi.boleto.functions import gera_boleto_bradesco
-from gestorpsi.boleto.models import BradescoBilletData
+from gestorpsi.gcm.models.plan import Plan
+from gestorpsi.gcm.models.payment import PaymentType
+
+from datetime import datetime
 
 @permission_required_with_403('organization.organization_write')
 def professional_responsible_save(request, object, ids, names, subscriptions, organization_subscriptions, professions):
-    ProfessionalResponsible.objects.all().delete()
 
-    for x in range(len(names)):
-        obj = []
+    ProfessionalResponsible.objects.filter(organization=object).delete()
 
-        # Whitout Profession of the Professional
-        if not professions[x]:
-            if names[x]:
-                obj = (ProfessionalResponsible(name=names[x], subscription=subscriptions[x], organization=object, organization_subscription=organization_subscriptions[x] ))
-        else:
-            # Whit Profession of the Professional
-            if names[x]:
-                obj = (ProfessionalResponsible(name=names[x], subscription=subscriptions[x], organization=object, organization_subscription=organization_subscriptions[x], profession=get_object_or_None(Profession, pk=professions[x])))
+    # required
+    if range(len(names)) > 0 :
+        for x in range(len(names)):
+            obj = []
 
-        if ( len(names[x]) != 0 or len(subscriptions[x]) !=0 ):
-            obj.save()
+            # Whitout Profession of the Professional
+            if not professions[x]:
+                if names[x]:
+                    obj = (ProfessionalResponsible(name=names[x], subscription=subscriptions[x], organization=object, organization_subscription=organization_subscriptions[x] ))
+            else:
+                # Whit Profession of the Professional
+                if names[x]:
+                    obj = (ProfessionalResponsible(name=names[x], subscription=subscriptions[x], organization=object, organization_subscription=organization_subscriptions[x], profession=get_object_or_None(Profession, pk=professions[x])))
+
+            if ( len(names[x]) != 0 or len(subscriptions[x]) !=0 ):
+                obj.save()
+
+
 
 @permission_required_with_403('organization.organization_read')
 def form(request):
+
     user = request.user
     object = get_object_or_404( Organization, pk=user.get_profile().org_active.id )
-    plans = Plan.objects.filter( staff_size__gte=object.care_professionals().count() )
+
     return render_to_response('organization/organization_form.html', {
         'object': object, #Organization.objects.get(pk= user.get_profile().org_active.id),
         'PhoneTypes': PhoneType.objects.all(), 
@@ -84,59 +89,24 @@ def form(request):
         'Activitie': Activitie.objects.all(),
         'professional_responsible': ProfessionalResponsible.objects.filter(organization = user.get_profile().org_active),
         'Professions': Profession.objects.all(),
-        'plans': plans,
-        'invoices': Invoice.objects.filter(organization=object, status=1).order_by('date'), #billets not paid and not excluded
-        'inscription': Invoice.objects.filter(organization=object, status=1, plan=None).order_by('date')[0:1],
-        'today': datetime.today(),
         },
         context_instance=RequestContext(request))
 
 
 @permission_required_with_403('organization.organization_write')
-def make_second_copy(request, invoice):
-    user = request.user
-
-    invoice = Invoice.objects.get(pk=invoice)
-    aux = Invoice.objects.filter(status=1, organization=invoice.organization, due_date__gt=datetime.now()).count()
-    if aux <= 0:
-        inv = Invoice()
-        inv.organization = invoice.organization
-        inv.due_date = datetime.now() + timedelta(days=7)
-        inv.expiry_date = invoice.expiry_date
-        inv.ammount = invoice.ammount
-        inv.discount = invoice.discount
-        inv.status = 1
-        inv.plan = invoice.plan
-        inv.save()
-        
-        invoice.status = 3
-        invoice.save()
-        
-        data = BradescoBilletData.objects.all()[0]
-        billet_url = gera_boleto_bradesco(request.user.id, inv, days=data.default_second_copy_days, second_copy=True)
-        inv.billet_url = billet_url
-        inv.save()
-        aux = True
-        message = 'Second copy details saved successfully'
-    else:
-        message = 'Second copy not generated: there are billets that still requiring payment.'
-        aux = False 
-        
-    return render_to_response('organization/second_copy.html', locals(), context_instance=RequestContext(request))
-
-
-@permission_required_with_403('organization.organization_write')
 def save(request):
+
     user = request.user
+
     try:
-	object = Organization.objects.get(pk= user.get_profile().org_active.id)
+        object = Organization.objects.get(pk= user.get_profile().org_active.id)
     except:
         object = Organization()
         object.short_name = slugify(request.POST['name'])
     
     if (object.short_name != request.POST['short_name']):
         if (Organization.objects.filter(short_name__iexact = request.POST['short_name']).count()):
-	        return HttpResponse("false")
+            return HttpResponse("false")
         else:
             object.short_name = request.POST['short_name']
     
@@ -150,7 +120,6 @@ def save(request):
     object.photo = request.POST['photo']
     object.visible = get_visible( request, request.POST.get('visible') )
     #profile
-    #object.person_type = PersonType.objects.get(pk=request.POST.get('person_type'))
     object.person_type = get_object_or_None(PersonType, pk=request.POST.get('person_type'))
     object.unit_type = get_object_or_None(UnitType, pk=request.POST.get('unit_type'))
     object.environment = get_object_or_None(AdministrationEnvironment, pk=request.POST.get('environment'))
@@ -160,11 +129,11 @@ def save(request):
     object.activity = get_object_or_None(Activitie, pk=request.POST.get('activity'))
     """ provided types """
     object.provided_type.clear()
+
     for p in request.POST.getlist('provided_type'):
         object.provided_type.add(ProvidedType.objects.get(pk=p))
-    # comment
+
     object.comment = request.POST['comment']
-    object.prefered_plan = get_object_or_None(Plan, pk=request.POST.get('prefered_plan'))
     object.save()
    
     professional_responsible_save(request, object, request.POST.getlist('professionalId'), request.POST.getlist('professional_name'), request.POST.getlist('professional_subscription'), request.POST.getlist('professional_organization_subscription'), request.POST.getlist('service_profession'))
@@ -183,9 +152,12 @@ def save(request):
     messages.success(request, _('Organization details saved successfully'))
     return HttpResponseRedirect('/organization/')
     
-# The question is, is available the short name?
-# 0 = NO
-# 1 = YES
+
+'''
+    Tiago de Souza Moraes 20/06/2014
+    Organization short name is available?
+    return 0=No / 1=Yes
+'''
 @permission_required_with_403('organization.organization_read')
 def shortname_is_available(request, short):
     if Organization.objects.filter(short_name__iexact = short).count():
@@ -193,11 +165,15 @@ def shortname_is_available(request, short):
     else:
 	    return HttpResponse("1")
 
+
+
 def get_visible( request, value ):
     if ( value == 'on' ):
         return True
     else:
         return False 
+
+
 
 def list_prof_org(request, org_id = None):
     org = Organization.objects.get(pk = org_id)
@@ -213,3 +189,64 @@ def list_prof_org(request, org_id = None):
         i = i + 1
 
     return HttpResponse(simplejson.dumps(array), mimetype='application/json')
+
+
+
+'''
+    organization signature save
+    Tiago de Souza Moraes 20/06/2014
+'''
+#@permission_required_with_403('organization.organization_write')
+def signature_save(request):
+
+    user = request.user
+    obj = Organization.objects.get(pk= user.get_profile().org_active.id) # get org from logged user
+
+    if request.POST:
+
+        obj.prefered_plan = get_object_or_None(Plan, pk=request.POST.get('prefered_plan'))
+        obj.payment_type = PaymentType.objects.get( pk=request.POST.get('payment_type') )
+        obj.save()
+
+        messages.success(request, _('Organization details saved successfully'))
+        return HttpResponseRedirect('/organization/signature/')
+
+    else:
+
+        return render_to_response('organization/organization_signature.html', {
+            'obj': obj,
+            'plans': Plan.objects.filter( active=True ).order_by('weight'),
+            'payment_type': PaymentType.objects.filter(active=True, show_to_client=True).order_by('-name'),
+            },
+            context_instance=RequestContext(request))
+
+
+"""
+    suspension signature of organization
+    register reason to suspension organization
+"""
+def suspension(request):
+
+    obj = Organization.objects.get(pk=request.user.get_profile().org_active.id) # get org from logged user
+
+    if request.POST and request.POST.get('suspension_confirm'):
+
+        r = u"Conta suspensa dia %s\n\n" %  datetime.today().strftime("%d %B %Y, %H:%m")
+        for x in request.POST.getlist('suspension_reason'):
+            r += u"%s\n\n" % x
+
+        if request.POST.get('other_reason'):
+            r += request.POST.get('other_reason')
+
+        obj.suspension = True
+        obj.suspension_reason = r
+        obj.save()
+
+        messages.success(request, _('Organization details saved successfully') )
+        return HttpResponseRedirect('/organization/suspension/')
+
+    else:
+        return render_to_response('organization/organization_signature_suspension.html', {
+            'obj': obj,
+            },
+            context_instance=RequestContext(request))

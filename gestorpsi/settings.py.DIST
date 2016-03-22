@@ -26,6 +26,14 @@ ADMINS = (
      ('GestorPsi', 'noreply@domain.com'),
 )
 
+# notification people when new organization subscription
+ADMINS_REGISTRATION = ['seu-email@server.com']
+
+# URL
+URL_HOME = "http://127.0.0.1:8000"
+URL_APP = "http://127.0.0.1:8000"
+URL_DEMO = "http://127.0.0.1:8000"
+SIGNATURE = "GestorPSI Developer"
 
 #EMAIL_FROM = 'GestorPsi <webmaster@gestorpsi.com.br>'
 EMAIL_FROM = '' # eg: noreply@domain.com
@@ -124,6 +132,7 @@ TEMPLATE_CONTEXT_PROCESSORS = (
     'django.core.context_processors.debug',
     'django.core.context_processors.static',
     'django.core.context_processors.media',
+    'django.contrib.messages.context_processors.messages',
     'swingtime.context_processors.current_datetime',
 )
 
@@ -136,6 +145,7 @@ MIDDLEWARE_CLASSES = (
     'reversion.middleware.RevisionMiddleware',
     'gestorpsi.middleware.threadlocals.ThreadLocals',
     'django.contrib.messages.middleware.MessageMiddleware',
+    'gestorpsi.extra.UserTracebackMiddleware',
     #'gestorpsi.util.usertimeout.UserTimeout',
     #'gestorpsi.util.showqueries.ShowQueries',
 )
@@ -148,7 +158,6 @@ TEMPLATE_DIRS = (
     # Don't forget to use absolute paths, not relative paths.
     os.path.join(PROJECT_ROOT_PATH, "templates"),
     os.path.join(PROJECT_ROOT_PATH, "async_tasks/templates"),
-    os.path.join(PROJECT_ROOT_PATH, "boleto/templates"),
     os.path.join(PROJECT_ROOT_PATH, "gcm/templates"),
     os.path.join(PROJECT_ROOT_PATH, "util/templatetags"),
 )
@@ -186,7 +195,8 @@ INSTALLED_APPS = (
     #'gestorpsi.socioeconomic',  <--- TO BE IMPLEMENTED SOON
     'gestorpsi.ehr',
     'gestorpsi.report',
-    'gestorpsi.boleto',
+    'gestorpsi.covenant',
+    'gestorpsi.financial',
     'swingtime',
     'registration',
     'south',
@@ -254,6 +264,11 @@ import djcelery
 djcelery.setup_loader()
 #django celery: task scheduling package
 
+# currency
+USE_L10N = True
+DECIMAL_SEPARATOR = ','
+THOUSAND_SEPARATOR = '.'
+USE_THOUSAND_SEPARATOR = False
 
 if not DEBUG:
     import logging

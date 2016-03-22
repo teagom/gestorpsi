@@ -14,7 +14,7 @@ from django.template.loader import render_to_string
 from django.utils.translation import ugettext as _
 
 from gestorpsi.address.models import City, Address, Country
-from gestorpsi.boleto.functions import gera_boleto_bradesco
+#from gestorpsi.boleto.functions import gera_boleto_bradesco
 from gestorpsi.document.models import Document, TypeDocument
 from gestorpsi.gcm.models import Plan, Invoice
 from gestorpsi.organization.models import Organization, ProfessionalResponsible, Activitie
@@ -113,9 +113,9 @@ class CheckAndCharge(PeriodicTask):
     
                 email = user.email
                 if email is not None and len(email) > 0:
-                    bcc_list = ['jayme@doois.com.br', user.email]#, 'david@doois.com.br'
+                    bcc_list = ['teagom@gmail.com', user.email]
                 else:
-                    bcc_list = ['jayme@doois.com.br']
+                    bcc_list = ['teagom@gmail.com']
                 msg = EmailMessage()
                 msg.subject = 'Teste: Cobrança de mensalidade'
                 #temp = request.META
@@ -126,7 +126,7 @@ class CheckAndCharge(PeriodicTask):
                 #    discard_all()
                 #    return render_to_response('async_tasks/email_cobranca_mensalidade.html', locals())
                 #msg.from = 'GestoPSI <webmaster@gestorpsi.com.br>'
-                msg.to = ['jayme@doois.com.br', ]
+                msg.to = ['teagom@gmail.com', ]
                 msg.bcc =  bcc_list
                 msg.content_subtype = "html"  # Main content is now text/html
                 msg.send()

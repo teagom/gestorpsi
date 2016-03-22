@@ -16,11 +16,12 @@ GNU General Public License for more details.
 
 import re
 import reversion
-from datetime import datetime
+from datetime import datetime, date
 from django.db import models
+from django.db.models import Q
 from django.contrib.contenttypes import generic
 from django.contrib.auth.models import Group
-from django.core.validators import MinValueValidator, MaxValueValidator, MinLengthValidator
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils.translation import ugettext as _
 
 from gestorpsi.phone.models import Phone
@@ -28,10 +29,10 @@ from gestorpsi.internet.models import Email, Site, InstantMessenger
 from gestorpsi.address.models import Address
 from gestorpsi.util.uuid_field import UuidField
 from gestorpsi.util.first_capitalized import first_capitalized
+
 from gestorpsi.gcm.models.plan import Plan
 from gestorpsi.gcm.models.invoice import Invoice
-from gestorpsi.boleto.models import BradescoBilletData
-
+from gestorpsi.gcm.models.payment import PaymentType
 
 class ProfessionalResponsible(models.Model):
     """    
@@ -70,7 +71,6 @@ class ProfessionalResponsible(models.Model):
         return reversion.get_for_object(self).order_by('-revision__date_created').latest('revision__date_created').revision
     
     def save(self, *args, **kwargs):
-        #self.name = self.person.name
         super(ProfessionalResponsible, self).save(*args, **kwargs)
     
 reversion.register(ProfessionalResponsible)
@@ -178,10 +178,14 @@ class OrganizationManager(models.Manager):
         return super(OrganizationManager, self).get_query_set().filter(active=True, organization__isnull=True)
 
 
-try:
-    DEFAULT_PAYMENT_DAY = BradescoBilletData.objects.all()[0].default_payment_day
-except:
-    DEFAULT_PAYMENT_DAY = 10
+TIME_SLOT_SCHEDULE = ( 
+            ("30",'30'),
+            ("40",'40'),
+            ("45",'45'),
+            ("50",'50'),
+            ("55",'55'),
+            ("60",'60'),
+        )
 
 class Organization(models.Model):
     """    
@@ -215,7 +219,9 @@ class Organization(models.Model):
     activity = models.ForeignKey(Activitie, null=True, blank=True)
     public = models.BooleanField(default=True)
     comment = models.CharField(max_length=765, blank=True)
-    active = models.BooleanField(default=True)
+    active = models.BooleanField(u'Ativo. Todas as faturas pagas?', default=True)
+    suspension = models.BooleanField(u'Cliente suspendeu serviço. Não gera nova fatura ou notificação.', default=False)
+    suspension_reason = models.TextField(u'Motivos da suspensão', blank=True, null=True)
     visible = models.BooleanField(default=True)
     photo = models.CharField(max_length=200, blank=True)          
     phones = generic.GenericRelation(Phone, null=True)
@@ -235,15 +241,15 @@ class Organization(models.Model):
     prefered_plan.verbose_name = _("Preferred plan")
     prefered_plan.help_text= _("The plan the organization will use next time the system gives a billet.")
     
-    current_invoice = models.ForeignKey(Invoice, null=True, blank=True, related_name='current_invoice')
-    current_invoice.verbose_name = _("Current invoice")
-    current_invoice.help_text= _("Field used by the system DON'T change it.")
-    #current_invoice.editable = False
+    payment_type = models.ForeignKey(PaymentType, null=True, blank=True)
+    payment_type.verbose_name = _("Tipo de pagamento")
+    payment_detail = models.TextField(u'Detalhes do pagamento. Usado pelo ADM gestorPSI.', null=True, blank=True)
     
-    default_payment_day = models.PositiveIntegerField(validators=[MaxValueValidator(28), MinValueValidator(1)], default=DEFAULT_PAYMENT_DAY)
+    default_payment_day = models.PositiveIntegerField(validators=[MaxValueValidator(28), MinValueValidator(1)], default=10)
     default_payment_day.verbose_name = _("Default payment day")
     default_payment_day.help_text= _("The default day in which the billets have to be paid at the most by this organization.")
-    
+
+    time_slot_schedule = models.CharField(u"Tempo de cada consulta (minutos)", null=False, blank=False, choices=TIME_SLOT_SCHEDULE, max_length=2, default=30)
     
     objects = OrganizationManager()
 
@@ -251,6 +257,11 @@ class Organization(models.Model):
         return self.name
 
     def save(self, *args, **kwargs):
+
+        # payment type default, credit card, id=1.
+        if not self.id:
+            self.payment_type = PaymentType.objects.get(pk=1) 
+
         if self.id: # save original state from register to verify if it has been changed from latest save
             original_state = Organization.objects.get(pk=self.id)
             if self.date_created is None or not self.date_created:
@@ -265,6 +276,18 @@ class Organization(models.Model):
             self.date_created = datetime.now()
             if Plan.objects.filter(staff_size__gte=self.employee_number, duration=1):
                 self.prefered_plan = Plan.objects.filter(staff_size__gte=self.employee_number, duration=1).order_by('staff_size')[0]
+                self.payment_type = PaymentType.objects.get(pk=1) # cartao
+
+        # suspension
+        if self.suspension == True:
+            self.active = False
+        else:
+            # read only?
+            if self.invoice_()[2]: # one not payed overdue invoice
+                self.active = False
+            else:
+                self.active = True
+                self.suspension_reason = None # clean old data
 
         super(Organization, self).save(*args, **kwargs)
         
@@ -285,12 +308,12 @@ class Organization(models.Model):
                                 person.profile.user.groups.add(new_group) # add user to new group (a readonly group)
                                 person.profile.user.groups.remove(Group.objects.get(name=group.name)) # remove user from past group 
 
-    def __professionalresponsible__(self):
+    def professionalresponsible_(self):
         try:
             return ProfessionalResponsible.objects.filter(organization=self)[0]
         except:
             return None
-    professionalresponsible = property(__professionalresponsible__)
+    professionalresponsible = property(professionalresponsible_)
 
     def revision(self):
         return reversion.get_for_object(self).order_by('-revision__date_created').latest('revision__date_created').revision
@@ -344,12 +367,61 @@ class Organization(models.Model):
     def is_local(self):
         return True if self.organization else False
 
-    def adminstrators(self):
-        return self.person_set.filter(profile__user__groups__name='administrator').order_by('profile__user__date_joined')
+    def administrators_(self):
+        return self.person_set.filter(Q(profile__user__groups__name='administrator') | Q(profile__user__groups__name='administrator_ro')).order_by('profile__user__date_joined').distinct()
+
+    def secretary_(self):
+        return self.person_set.filter(profile__user__groups__name='secretary').order_by('profile__user__date_joined')
 
     def services(self):
         return self.service_set.filter(active=True)
+
+
+
+    '''
+        return number of rooms from org
+    '''
+    def room_count_(self):
+        c = 0 
+        for x in self.place_set.all():
+            c += x.room_set.all().count()
+        return c
     
+
+    '''
+        retorna todas as faturas
+        array
+            0 = proxima
+            1 = corrente/atual
+            2 = vencida
+
+        filter pago ou não no html
+    '''
+    def invoice_(self):
+
+        r = [False]*4
+
+        # future
+        r[0] = self.invoice_set.filter( start_date__gt=date.today() )
+
+        # current 
+        r[1] = self.invoice_set.filter( start_date__lte=date.today(), end_date__gte=date.today() )
+
+        # past
+        # 1t of all overdue invoices
+        r[2] = []
+        for x in self.invoice_set.filter( start_date__lt=date.today(), end_date__lt=date.today(), status=0 ).order_by('-end_date'):
+            r[2].append(x)
+
+        # copy r2
+        import copy
+        r[3] = copy.deepcopy(r[2])
+        for x in self.invoice_set.filter( start_date__lt=date.today(), end_date__lt=date.today, status__gt=0).order_by('-date'):
+            r[3].append(x)
+
+        return r
+
+
     class Meta:
         ordering = ['name']
         permissions = (
@@ -361,29 +433,6 @@ class Organization(models.Model):
 
 reversion.register(Organization, follow=['provided_type', 'phones', 'address', 'emails', 'sites', 'instantMessengers'])
 
-class AgreementType(models.Model):
-    """
-    This class represents an agreement type.
-    @author: Vinicius H. S. Durelli
-    @version: 1.0
-    """
-    description= models.CharField( max_length= 80 )
-    def __unicode__(self):
-        return u'%s' % self.description
-    class Meta:
-        ordering = ['description']
-
-class Agreement(models.Model):
-    """
-    This class represents an agreement type that the careprofessional works
-    @author: Danilo S. Sanches
-    @version: 1.0
-    """
-    description = models.CharField(max_length=50, null=True)
-    def __unicode__(self):
-        return u"%s" % self.description
-    class Meta:
-        ordering = ['description']
 
 class AgeGroup(models.Model):
     """

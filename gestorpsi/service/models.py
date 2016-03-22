@@ -17,10 +17,11 @@ GNU General Public License for more details.
 import reversion
 from django.db import models
 from django.utils.translation import ugettext as _
-from gestorpsi.organization.models import Organization, Agreement, AgeGroup, EducationLevel, HierarchicalLevel
+from gestorpsi.organization.models import Organization, AgeGroup, EducationLevel, HierarchicalLevel
 from gestorpsi.careprofessional.models import CareProfessional, Profession
 from gestorpsi.client.models import Client
 from gestorpsi.util.uuid_field import UuidField 
+from gestorpsi.covenant.models import Covenant
 
 class ServiceType(models.Model):
     name = models.CharField(max_length=100)
@@ -92,15 +93,21 @@ class Service(models.Model):
     comments = models.TextField(blank=True)
     academic_related = models.BooleanField(_('Academic (supervised) related service'), default=False)
     is_online = models.BooleanField(default=False)
-    color = models.CharField(_('Color'), max_length=6, null=True, help_text=_('Color in HEX Format. Ex: 662393'))
-    
+    color = models.CharField(_('Color'), max_length=6, null=True, help_text=_('Color in HEX Format. Ex: 662393'), default=0)
+    covenant = models.ManyToManyField(Covenant, null=True, blank=True)
     objects = ServiceManager()
+
 
     def __unicode__(self):
         u = u"%s" % (self.name)
         if self.is_group:
             u += " (%s)" % _('Group')
         return u
+
+    def label_group_(self):
+        if self.is_group:
+            return u'%s (grupo)' % self.name
+        return u'%s' % self.name
     
     def _name_html(self):
         return u"<div class='service_name_html' style='background-color:#%s;'>&nbsp;</div> %s" % (self.color, self.name)
@@ -126,8 +133,28 @@ class Service(models.Model):
             ("service_write", "Can write services"),
         )
 
+
+
     def revision(self):
         return reversion.get_for_object(self).order_by('-revision__date_created').latest('revision__date_created').revision
+
+
+
+    def save(self, *args, **kwargs):
+
+        # check html color is valid
+        '''
+            int(string) == erro, using try and except
+        '''
+        try:
+            if not int(self.color,16) < 16777216 :
+                self.color = 'ffffff' # white
+        except:
+            self.color = 'ffffff' # white
+            
+        super(Service, self).save(*args, **kwargs)
+
+
 
 class ServiceGroup(models.Model):
     id = UuidField(primary_key=True)

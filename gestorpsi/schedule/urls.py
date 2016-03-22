@@ -18,24 +18,21 @@ from django.conf.urls.defaults import *
 from gestorpsi.authentication.views import login_check
 from gestorpsi.referral.forms import ReferralForm
 from gestorpsi.schedule.forms import ScheduleOccurrenceForm, ScheduleSingleOccurrenceForm, OccurrenceConfirmationForm
-from gestorpsi.schedule.views import occurrence_view
-from gestorpsi.schedule.views import add_event
-from gestorpsi.schedule.views import schedule_index
-from gestorpsi.schedule.views import schedule_occurrence_listing_today
-from gestorpsi.schedule.views import event_view
-from gestorpsi.schedule.views import daily_occurrences 
-from gestorpsi.schedule.views import today_occurrences
-from gestorpsi.schedule.views import occurrence_confirmation_form
-from gestorpsi.schedule.views import occurrence_family_form, occurrence_employee_form
-from gestorpsi.schedule.views import occurrence_group
-from gestorpsi.schedule.views import week_view
-from gestorpsi.schedule.views import week_view_table
+
+from gestorpsi.schedule.views import occurrence_view, schedule_settings, add_event, schedule_index, schedule_occurrence_listing_today, event_view, daily_occurrences, today_occurrences, occurrence_confirmation_form, occurrence_family_form, occurrence_employee_form, occurrence_group, week_view, week_view_table, occurrence_confirmation_form_group
 
 urlpatterns = patterns('',
-     url(
+    url(
         r'^(?:calendar/)?$', 
         login_check(schedule_index), 
         name='schedule-index'
+    ),
+
+    # set schedule slot time
+    url(
+        r'^settings/$', 
+        login_check(schedule_settings), 
+        name='schedule-settings'
     ),
 
     # index, not default place
@@ -113,6 +110,14 @@ urlpatterns = patterns('',
          'form_class': OccurrenceConfirmationForm,
         },
         name='swingtime-occurrence-confirmation'
+    ),
+    url(
+        r'^events/(\d+)/confirmation/group/$', 
+        login_check(occurrence_confirmation_form_group), 
+        {'template':'schedule/schedule_occurrence_confirmation_form_group.html',
+         'form_class': OccurrenceConfirmationForm,
+        },
+        name='swingtime-occurrence-confirmation-group'
     ),
     url(
         r'^events/group/(?P<group_id>[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/occurrence/(?P<occurrence_id>\d+)/$', 

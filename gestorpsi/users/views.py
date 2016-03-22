@@ -57,7 +57,7 @@ def form(request, object_id=None):
     user = request.user
     try:
         profile = Profile.objects.get(person=object_id, person__organization=request.user.get_profile().org_active)
-        # HAVE JUST ONE ADMINISTRATOR?
+        # have just one administrator?
         show = "False"
         
         if ( (Group.objects.get(name='administrator').user_set.all().filter(profile__organization=user.get_profile().org_active).count()) == 1 ):
@@ -156,7 +156,7 @@ def update_user(request, object_id):
     profile = Profile.objects.get(person = object_id, person__organization=request.user.get_profile().org_active)
     permissions = request.POST.getlist('perms')
 
-    # GROUPS - clear all permissions and re-create them
+    # groups - clear all permissions and re-create them
     profile.user.groups.clear()
     Role.objects.filter(organization=organization, profile=profile).delete()
 
@@ -186,24 +186,32 @@ def update_user(request, object_id):
 
     return HttpResponseRedirect('/user/%s/' % profile.person.id)
 
+
 @permission_required_with_403('users.users_write')
-def update_pwd(request, object_id=0):
+def update_pwd(request, obj=False):
+
+    if not obj:
+        return HttpResponseRedirect('/')
+
+    # check blank fields
     if not request.POST.get('password_mini') or not request.POST.get('password_mini_conf'):
         messages.error(request, _('All fields are required'))
-        return HttpResponseRedirect('/user/%s/' % object_id)
+        return HttpResponseRedirect('/user/%s/' % obj)
         
+    # check match fields
     if request.POST.get('password_mini') != request.POST.get('password_mini_conf'):
         messages.error(request, _('Password confirmation does not match. Please try again'))
-        return HttpResponseRedirect('/user/%s/' % object_id)
+        return HttpResponseRedirect('/user/%s/' % obj)
 
-    user = Profile.objects.get(person = object_id, person__organization=request.user.get_profile().org_active).user
+    user = Profile.objects.get(person = obj, person__organization=request.user.get_profile().org_active).user
     user.set_password(request.POST.get('password_mini'))
     user.profile.temp = request.POST.get('password_mini')    # temporary field (LDAP)
     user.profile.save()
     user.save(force_update=True)
 
     messages.success(request, _('Password updated successfully!'))
-    return HttpResponseRedirect('/user/%s/' % object_id)
+    return HttpResponseRedirect('/user/%s/' % obj)
+
 
 @permission_required_with_403('users.users_write')
 def set_form_user(request, object_id=0):
@@ -219,7 +227,7 @@ def set_form_user(request, object_id=0):
 def order(request, profile_id = None):
     object = Profile.objects.get(pk = profile_id, person__organization=request.user.get_profile().org_active)
     if request.user.get_profile() == object:
-        messages.success(request, ('Sorry, you can not disable yourself!'))
+        messages.error(request, _('Sorry, you can not disable yourself'))
     else:
         if object.user.is_active:
             object.user.is_active = False
@@ -234,6 +242,7 @@ def order(request, profile_id = None):
     
     return HttpResponseRedirect('/user/%s/' % object.person.id)
 
+'''
 @permission_required_with_403('users.users_write')
 def delete(request, profile_id = None):
     object = Profile.objects.get(pk = profile_id, person__organization=request.user.get_profile().org_active)
@@ -244,6 +253,8 @@ def delete(request, profile_id = None):
         messages.success(request, ('%s' % (_('User removed successfully'))))
     
     return HttpResponseRedirect('/user/')
+'''
+
 
 @permission_required_with_403('organization.organization_read')
 def username_is_available(request, user):
@@ -256,3 +267,29 @@ def username_is_available(request, user):
             return HttpResponse("0")
     else:
             return HttpResponse("1")
+
+
+@permission_required_with_403('users.users_write')
+def update_email(request, obj=False):
+
+    # obj format is required by urls.py
+    if not obj:
+        return HttpResponseRedirect('/')
+    
+    if not request.POST.get('email_mini') == request.POST.get('email_mini_conf') \
+            or not request.POST.get('email_mini') \
+            or not request.POST.get('email_mini_conf'):
+
+        messages.error(request, _('Email address do not match'))
+        return HttpResponseRedirect( '/user/%s/' % obj )
+    
+    user = Profile.objects.get( person=obj, person__organization=request.user.get_profile().org_active ).user
+    
+    user.email=request.POST.get('email_mini')
+    user.save()
+
+    user.profile.temp = request.POST.get('email_mini')
+    user.profile.save()
+    
+    messages.success(request, _('Email updated successfully!'))
+    return HttpResponseRedirect('/user/%s/' % obj)

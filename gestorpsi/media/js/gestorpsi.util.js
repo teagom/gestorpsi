@@ -45,11 +45,10 @@ $(document).ready(function() {
     /**
      * generic metho to load href into DOM element
      */
-    
     $('a.load').live('click', function() {
         $($(this).attr('element')).load($(this).attr('href'));
         $($(this).attr('element')).show();
-        $.scrollTo(0,0, {duration:300});
+        //$.scrollTo(0,0, {duration:300});
         return false;
     });
     
@@ -58,7 +57,7 @@ $(document).ready(function() {
      */
     
     $('#dialog #cancel_button').live('click', function() {
-        $.scrollTo(0,0, {duration:300});
+        //$.scrollTo(0,0, {duration:300});
         return false;
     });
     
@@ -68,22 +67,69 @@ $(document).ready(function() {
      
      //$('#colorpickerHolder').ColorPicker({flat: true});
 
-$('.colorpicker_open').ColorPicker({
-	onSubmit: function(hsb, hex, rgb, el) {
-		$(el).val(hex);
-		$(el).ColorPickerHide();
-        $('div.colorpicker_preview').css('background-color','#'+hex);
-	},
-	onBeforeShow: function () {
-		$(this).ColorPickerSetColor(this.value);
-	}
-})
-.bind('keyup', function(){
-	$(this).ColorPickerSetColor(this.value);
-    
-});
+    $('.colorpicker_open').ColorPicker({
+        onSubmit: function(hsb, hex, rgb, el) {
+            $(el).val(hex);
+            $(el).ColorPickerHide();
+            $('div.colorpicker_preview').css('background-color','#'+hex);
+        },
+        onBeforeShow: function () {
+            $(this).ColorPickerSetColor(this.value);
+        }
+    })
 
+    .bind('keyup', function(){
+        $(this).ColorPickerSetColor(this.value);
+        
+    });
 
+    // report event - show and hide list of clients
+    $('a.showdialog').live('click', function(){ 
+        $('div.client_dialog').hide();
+        $('div.client_dialog[id=' + this.name + ']').show();
+    });
+
+    $('input.confirmation_select').click( function(){ 
+
+       if (this.value == '999'){ 
+
+           if ( this.checked ) { 
+               $('input#id_confirmation_status_1').attr("checked","checked");
+               $('input#id_confirmation_status_1').attr("disabled",true);
+               $('input#id_confirmation_status_2').removeAttr("checked");
+               $('input#id_confirmation_status_2').attr("disabled",true);
+               $('input#id_confirmation_status_3').attr("checked","checked");
+               $('input#id_confirmation_status_3').attr("disabled",true);
+               $('input#id_confirmation_status_4').attr("checked","checked");
+               $('input#id_confirmation_status_4').attr("disabled",true);
+               $('input#id_confirmation_status_5').attr("checked","checked");
+               $('input#id_confirmation_status_5').attr("disabled",true);
+               $('input#id_confirmation_status_6').attr("checked","checked");
+               $('input#id_confirmation_status_6').attr("disabled",true);
+               $('input#id_confirmation_status_7').attr("checked","checked");
+               $('input#id_confirmation_status_7').attr("disabled",true);
+               $('input#id_confirmation_status_8').attr("checked","checked");
+               $('input#id_confirmation_status_8').attr("disabled",true);
+           } else { 
+               $('input#id_confirmation_status_1').removeAttr("checked");
+               $('input#id_confirmation_status_1').attr("disabled",false);
+               $('input#id_confirmation_status_2').attr("disabled",false);
+               $('input#id_confirmation_status_3').removeAttr("checked");
+               $('input#id_confirmation_status_3').attr("disabled",false);
+               $('input#id_confirmation_status_4').removeAttr("checked");
+               $('input#id_confirmation_status_4').attr("disabled",false);
+               $('input#id_confirmation_status_5').removeAttr("checked");
+               $('input#id_confirmation_status_5').attr("disabled",false);
+               $('input#id_confirmation_status_6').removeAttr("checked");
+               $('input#id_confirmation_status_6').attr("disabled",false);
+               $('input#id_confirmation_status_7').removeAttr("checked");
+               $('input#id_confirmation_status_7').attr("disabled",false);
+               $('input#id_confirmation_status_8').removeAttr("checked");
+               $('input#id_confirmation_status_8').attr("disabled",false);
+           }
+       }
+
+    });
 
 });
 

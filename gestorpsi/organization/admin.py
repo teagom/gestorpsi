@@ -55,17 +55,34 @@ class ProfessionalResponsibleInline(admin.StackedInline):
     extra = 1
 
 
+'''
+    organization filter and action
+'''
+def turnoff(modeladmin, request, queryset):
+        for obj in queryset:
+            obj.active = False
+            obj.save()
+turnoff.short_description = "Desativar organização"
+
+def turnon(modeladmin, request, queryset):
+        for obj in queryset:
+            obj.active = True
+            obj.save()
+turnon.short_description = "Ativar organização"
+
 class OrganizationAdmin(admin.ModelAdmin):
-    inlines = [ProfessionalResponsibleInline, ]
+    list_display = ('name','id','active','suspension','trade_name','short_name')
+    list_filter = ['active',]
+    search_fields = ['name','trade_name','short_name','id']
+    actions = [turnoff, turnon]
 
 
 class ProfessionalResponsibleAdmin(admin.ModelAdmin):
     form = ProfessionalResponsibleForm
 
 
-
-admin.site.register(Agreement)
-admin.site.register(AgreementType)
+#admin.site.register(Agreement)
+#admin.site.register(AgreementType)
 admin.site.register(PersonType)
 admin.site.register(AdministrationEnvironment)
 admin.site.register(Source)
@@ -79,5 +96,3 @@ admin.site.register(EducationLevel)
 admin.site.register(HierarchicalLevel)
 admin.site.register(ProfessionalResponsible, ProfessionalResponsibleAdmin)
 admin.site.register(Organization, OrganizationAdmin)
-
-
