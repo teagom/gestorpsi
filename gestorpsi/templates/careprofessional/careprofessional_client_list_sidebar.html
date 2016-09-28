@@ -14,12 +14,15 @@ GNU General Public License for more details.
 
 {% endcomment %}
 
-<html>
-<head>
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
-<title></title>
-</head>
-<body>
-{{ message }}
-</body>
-</html>
+{% load i18n %}
+
+{% if object.id %}
+    <div id="sidebar" class="sidebar_client">
+        <h3>{% trans "Action" %}</h3>
+        <ul>
+            <!-- missing permission -->
+            <li><a href="{% url careprofessional-client-list object.id 1 %}" class="client_form">{% trans "Include client list active" %}</a></li>
+            <li><a href="{% url careprofessional-client-list object.id 0 %}" class="client_form">{% trans "Include client list inactive" %}</a></li>
+        </ul>
+    </div>
+{% endif %}

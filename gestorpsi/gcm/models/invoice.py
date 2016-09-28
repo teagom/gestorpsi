@@ -2,13 +2,25 @@
 
 """
     Copyright (C) 2008 GestorPsi
-"""
 
-from django.db import models
-from django.utils.translation import ugettext_lazy as _
+    This program is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public License
+    as published by the Free Software Foundation; either version 2
+    of the License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+"""
 
 from datetime import datetime, date
 from dateutil.relativedelta import relativedelta
+
+from django.db import models
+from django.utils.translation import ugettext_lazy as _
+from django.contrib.auth.models import User
+from threadlocals.threadlocals import get_current_request
 
 from gestorpsi.gcm.models.payment import PaymentType
 from gestorpsi.gcm.models.plan import Plan
@@ -38,6 +50,22 @@ BANK = (
 
 
 class Invoice(models.Model):
+    """
+        Invoice of plan
+           
+        Future
+            start, end, expiry date > today
+
+        Pass
+            start, end, expiry date < today
+
+        Current
+            start date < today < end date
+
+        Not Paid
+            pass and current invoice
+            start, expiry date < today
+    """
     type = models.CharField(max_length=2, null=False, blank=False, choices=INVOICE_TYPES, default='2')
     
     organization = models.ForeignKey('organization.Organization', verbose_name=_('Organizacao'))
@@ -46,14 +74,14 @@ class Invoice(models.Model):
     date_payed = models.DateField(_(u'Data do Pagamento'), null=True, blank=True)
     date_payed.help_text=_('Preencher apenas quando efetuado pagamento. Formato aaaa/mm/dd Ex: 2014-12-31')
     
-    start_date = models.DateField(_(u'Data início periodo'), null=False, blank=False, default='2000-01-01')
-    start_date.help_text=_('Formato aaaa/mm/dd Ex: 2014-12-31')
+    start_date = models.DateField(_(u'Início periodo'), null=False, blank=False, default='2000-01-01')
+    start_date.help_text=_('Formato dd/mm/aaaa Ex: 31-12-2014')
 
-    end_date = models.DateField(_(u'Data do fim Periodo'), null=False, blank=False, default='2000-01-01') # vencimento e sem acesso ao sistema
-    end_date.help_text=_(u'Formato aaaa/mm/dd Ex: 2014-12-31. Organização modo apenas leitura.')
+    end_date = models.DateField(_(u'Fim Periodo'), null=False, blank=False, default='2000-01-01') # vencimento e sem acesso ao sistema
+    end_date.help_text=_('Formato dd/mm/aaaa Ex: 31-12-2014')
     
-    expiry_date = models.DateField(_('Data de Expiracao'), null=True, blank=True)
-    expiry_date.help_text = _('Formato aaaa/mm/dd  Ex: 2014-12-31 Data em que o plano vence. Conta do cliente modo apenas leitura.')
+    expiry_date = models.DateField(_('Pagamento/Vencimento'), null=True, blank=True)
+    expiry_date.help_text = _('Formato dd/mm/aaaa  Ex: 31-12-2014 Data em que o plano vence, deve ser pago. Conta do cliente modo apenas leitura.')
     
     ammount = models.DecimalField(_('Valor'), decimal_places=2, max_digits=8, null=True, blank=True)
     ammount.help_text=_('Utilizar pontos, nao virgulas. Ex.: 39.90')
@@ -68,6 +96,11 @@ class Invoice(models.Model):
 
     bank = models.CharField(_('Que banco recebeu?'), choices=BANK, max_length=3, null=True, blank=True)
     payment_detail = models.TextField(_(u'Detalhes do pagamento'), null=True, blank=True)
+
+    # read only - auditing
+    aud_author = models.ForeignKey(User, null=True, blank=True, verbose_name=u'Autor')
+    aud_date = models.DateTimeField(u'Cad/Alt', auto_now=True, null=False, blank=False, editable=True, default="2000-01-01")
+    aud_ip = models.CharField(('IP'), max_length=15, null=True, blank=True)
     
 
     class Meta:
@@ -85,6 +118,16 @@ class Invoice(models.Model):
     
     
     def save(self, *args, **kargs):
+
+        # get ip and user from request
+        # crontab and registration don't have request
+        try:
+            request = get_current_request()
+            self.aud_author = request.user
+            self.aud_ip = request.META.get('HTTP_X_FORWARDED_FOR')
+        except:
+            self.aud_author = None # crontab
+            self.aud_ip = '127.0.0.1' # localhost
 
         # new
         if not self.id:
@@ -109,7 +152,7 @@ class Invoice(models.Model):
             self.date_payed = date.today()
             self.start_date = self.date_payed
             self.end_date = self.start_date + relativedelta(months=1)
-            self.expiry_date = self.end_date
+            self.expiry_date = self.start_date + relativedelta(days=7)
             self.payment_type = PaymentType.objects.get(pk=4)
 
         super(Invoice, self).save()

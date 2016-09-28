@@ -1,14 +1,40 @@
-{% extends "registration/base.html" %}
-{% load i18n %}
-{% block title %}{% trans "Account activated" %}{% endblock %}
+{% extends "core/main.html" %}
 
-{% block content %}
-  
-  {% if account %}
-    <h1>{% trans "Account activated" %}</h1>
-    <p>{% trans "Thanks for signing up! Now you can" %} <a href="/accounts/login/">{% trans "log in" %}</a></p>
-  {% else %}
-    <h1>{% trans "Opppss..." %}</h1>
-    <p>{% trans "Sorry, it didn't work. Either your activation link was incorrect, or the activation key for your account has expired; activation keys are only valid for" %}</p>
-  {% endif %}
+{% comment %}
+
+    Copyright (C) 2008 GestorPsi
+
+    This program is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public License
+    as published by the Free Software Foundation; either version 2
+    of the License, or (at your option) any later version.
+
+    his program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+{% endcomment %}
+
+{% load i18n %}
+
+{% block title %} - {% trans "Account activated" %}{% endblock %}
+
+{% block registration %}
+    <div class="main_area login">
+
+        {% include "core/title.html" %}
+        <br />
+
+        {% if account %}
+            <h2>{% trans "Account activated" %}</h2>
+        {% else %}
+            <h2>{% trans "Sorry" %}</h2>
+            <br />
+            <h4>{% trans "It didn't work. Either your activation link was incorrect, or the activation key for your account has expired; activation keys are only valid for" %}</h4>
+            <br />
+        {% endif %}
+
+        {% include "tags/extra_links.html" %}
+    </div>
 {% endblock %}

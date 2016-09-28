@@ -1,0 +1,31 @@
+{% comment %}
+
+Copyright (C) 2008 GestorPsi
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+{% endcomment %}
+
+{% load i18n %}
+
+<div style="margin: 10px 10px 0;">
+    <h4><a href="{% url authentication-login-form %}" style="a:hover {text-decoration:none};">{% trans "Entrar no GestorPSI" %}</a></h4>
+    <hr size="5px">
+
+    <h4><a href="http://demo.gestorpsi.com.br" style="a:hover {text-decoration:none};">{% trans "Quero testar sem assinar" %}</a></h4>
+    <hr size="5px">
+
+    <h4><a href="https://app.gestorpsi.com.br{% url registration-register %}">{% trans "Quero assinar o GestorPSI" %}</a></h4>
+    <hr size="5px">
+
+    <h4><a href="{% url authentication-password-reset %}">{% trans "Esqueci minha senha" %}</a></h4>
+    <hr size="5px">
+</div>

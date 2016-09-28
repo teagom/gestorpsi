@@ -1,23 +1,27 @@
 # -*- coding: utf-8 -*-
+
 """
-Copyright (C) 2008 GestorPsi
+    Copyright (C) 2008 GestorPsi
 
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
+    This program is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public License
+    as published by the Free Software Foundation; either version 2
+    of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 """
 
 import reversion
+from datetime import datetime
+
 from django.db import models
 from django.contrib.contenttypes import generic
 from django.utils.translation import ugettext_lazy as _
 from django.contrib.auth.models import User
+
 from gestorpsi.middleware import threadlocals
 from gestorpsi.phone.models import Phone
 from gestorpsi.address.models import City, Address, Country
@@ -26,19 +30,12 @@ from gestorpsi.internet.models import Email, Site, InstantMessenger
 from gestorpsi.organization.models import Organization
 from gestorpsi.util.uuid_field import UuidField
 from gestorpsi.util.first_capitalized import first_capitalized
-from gestorpsi.util.models import Cnae
-from datetime import datetime
+
 
 Gender = (
     ('0','No Information'),
     ('1','Female'),
     ('2','Male')
-)
-
-COMPANY_SIZE = (
-    (1, _('Small')),
-    (2, _('Medium')),
-    (3, _('Big')),
 )
 
 class MaritalStatus(models.Model):
@@ -48,10 +45,11 @@ class MaritalStatus(models.Model):
     class Meta:
         ordering = ['description']
 
+
 class Person(models.Model):
     id = UuidField(primary_key=True)
     user = models.ForeignKey(User, editable=False, default=threadlocals.get_current_user) # the register owner
-    name = models.CharField(max_length=50)
+    name = models.CharField(max_length=50, blank=False, null=False)
     nickname = models.CharField(max_length=50, null=True, blank=True)
     photo = models.CharField(max_length=100)
     birthDate = models.DateField(null=True)
@@ -142,27 +140,12 @@ class Person(models.Model):
             if len(addr.zipCode): text += " - CEP: %s" % addr.zipCode
         return text
 
-    def get_photo(self):
-        from gestorpsi.settings import MEDIA_ROOT #, PROJECT_ROOT_PATH
-        #TODO: NEED FIX THIS BUG WHEN GENERATING CLIENT PDF WITH PHOTO
-        #      PERSON HAS A M2M RELATIONSHIP TO ORGANIZATION, NOT ONE-TO-ONE
-        #if len(self.photo):
-        #    return "%simg/organization/%s/.thumb-whitebg/%s" % (MEDIA_ROOT, self.organization.id, self.photo)
-        #else:
-        #    return "%simg/%s" % (MEDIA_ROOT, 'male_generic_photo.png')
-        return "%simg/%s" % (MEDIA_ROOT, 'male_generic_photo.png')
 
     def get_birthdate(self):
         if self.birthDate == None:
             return ""
         else:
             return self.birthDate.strftime('%d/%m/%Y')
-
-    def get_first_phone(self):
-        if self.phones.count:
-            return self.phones.all()[0]
-        else:
-            return ""
 
     def get_birth_place(self):
         if self.birthPlace == None:
@@ -177,30 +160,28 @@ class Person(models.Model):
             return self.birthPlace.state.country
 
     def get_first_phone(self):
-        if ( len( self.phones.all() ) != 0 ):
+        if self.phones.all():
             return self.phones.all()[0]
         else:
             return ''
     
     def get_first_email(self):
-        if ( len( self.emails.all() ) != 0 ):
+        if self.emails.all():
             return self.emails.all()[0]
         else:
             return ''
         
     def get_first_site(self):
-        if ( len( self.sites.all() ) != 0 ):
+        if self.sites.all():
             return self.sites.all()[0]
         else:
             return ''        
 
-    def _age(self):
+    def age(self):
         if not self.birthDate:
             return None
-
-        today = datetime.today()
-        return (today.year - self.birthDate.year) - int((today.month, today.day) < (self.birthDate.month, self.birthDate.day))
-    age = property(_age)
+        return (datetime.today().year-self.birthDate.year) - int( (datetime.today().month, datetime.today().day) < (self.birthDate.month, self.birthDate.day))
+    age = property(age)
 
     def is_company(self):
         return True if hasattr(self, 'company') else False
@@ -237,38 +218,3 @@ class Person(models.Model):
 
     class Meta:
         ordering = ['name']
-
-class CompanyClient(models.Model):
-    from gestorpsi.client.models import Client
-    client = models.ForeignKey(Client)
-    company = models.ForeignKey('Company')
-    responsible = models.BooleanField(default=False)
-    active = models.BooleanField(default=True)
-
-    def __unicode__(self):
-        return u'%s' % (self.client)
-
-    class Meta:
-        ordering = ['-active', '-responsible', 'client']
-        unique_together = (('client', 'company'),)
-
-class Company(models.Model):
-    from gestorpsi.client.models import Client
-    person = models.OneToOneField(Person, blank=True, null=True)
-    size = models.IntegerField(_('Company Size'), blank=True, null=True, choices=COMPANY_SIZE)
-    cnae_class = models.CharField(_('CNAE Subclass Code'), blank=True, null=True, max_length=9)
-    client = models.ManyToManyField(Client, blank=True, through='CompanyClient')
-
-    def __unicode__(self):
-        return u'%s' % self.person.name
-    
-    def _cnae_class_name(self):
-        c = Cnae.objects.filter(id=self.cnae_class)
-        if len(c):
-            return c[0].cnae_class
-        return None
-    cnae_class_name = property(_cnae_class_name)
-
-reversion.register(Company)
-reversion.register(CompanyClient)
-reversion.register(Person)

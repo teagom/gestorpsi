@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
 
 """
-Copyright (C) 2008 GestorPsi
+    Copyright (C) 2008 GestorPsi
 
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
+    This program is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public License
+    as published by the Free Software Foundation; either version 2
+    of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 """
 
 import string
@@ -23,45 +23,50 @@ from django.contrib.auth.models import User
 from django.template.defaultfilters import slugify
 from django.utils.translation import ugettext as _
 from django.utils import simplejson
-from django.template.defaultfilters import slugify
-from django.db.models import Q
 from django.contrib import messages
 from django.core.paginator import Paginator
+
 from gestorpsi.settings import DEBUG, MEDIA_URL, MEDIA_ROOT, PAGE_RESULTS
+
 from gestorpsi.address.models import Country, State, AddressType, City
 from gestorpsi.authentication.models import Profile
+
 from gestorpsi.careprofessional.models import LicenceBoard, CareProfessional
-from gestorpsi.service.models import Service, ServiceGroup, GroupMembers
-from gestorpsi.careprofessional.models import CareProfessional
 from gestorpsi.careprofessional.views import Profession
+
+from gestorpsi.service.models import Service, ServiceGroup, GroupMembers
+
 from gestorpsi.client.models import Client, Relation
 from gestorpsi.client.forms import FamilyForm
+
 from gestorpsi.document.models import TypeDocument, Issuer
 from gestorpsi.internet.models import EmailType, IMNetwork
 from gestorpsi.organization.models import Organization
-from gestorpsi.person.models import Person, MaritalStatus, CompanyClient
-from gestorpsi.person.forms import CompanyForm, CompanyClientForm
+
 from gestorpsi.person.views import person_save
+from gestorpsi.person.models import Person, MaritalStatus
+
+from gestorpsi.company.models import CompanyClient
+from gestorpsi.company.forms import CompanyForm, CompanyClientForm
+
 from gestorpsi.phone.models import PhoneType
-from gestorpsi.referral.models import Referral, ReferralChoice, IndicationChoice, Indication, ReferralAttach, REFERRAL_ATTACH_TYPE, Queue, ReferralExternal, ReferralDischarge
 from gestorpsi.admission.models import ReferralChoice as AdmissionChoice, AdmissionReferral
+
+from gestorpsi.referral.models import Referral, ReferralChoice, IndicationChoice, Indication, REFERRAL_ATTACH_TYPE, Queue, ReferralExternal, ReferralDischarge
 from gestorpsi.referral.forms import ReferralForm, ReferralDischargeForm, QueueForm, ReferralExtForm
-from gestorpsi.referral.views import _referral_view
-from gestorpsi.referral.views import _referral_occurrences
-#from gestorpsi.reports.header import header_gen
-#from gestorpsi.reports.footer import footer_gen
+from gestorpsi.referral.views import _referral_view, _referral_occurrences
 from gestorpsi.util.decorators import permission_required_with_403
 from gestorpsi.util.views import get_object_or_None
-from gestorpsi.person.views import person_json_list
-from gestorpsi.schedule.views import _datetime_view
-from gestorpsi.schedule.forms import ScheduleOccurrenceForm
-from gestorpsi.schedule.views import add_event
-from gestorpsi.schedule.views import occurrence_confirmation_form
-from gestorpsi.schedule.forms import OccurrenceConfirmationForm
-from gestorpsi.schedule.models import ScheduleOccurrence, Occurrence, OccurrenceConfirmation
+
+from gestorpsi.schedule.forms import ScheduleOccurrenceForm, OccurrenceConfirmationForm
+from gestorpsi.schedule.views import add_event, occurrence_confirmation_form, _datetime_view
+from gestorpsi.schedule.models import ScheduleOccurrence, OccurrenceConfirmation
+
 from gestorpsi.contact.models import Contact
-from gestorpsi.util.views import get_object_or_None, write_pdf
+
+from gestorpsi.util.views import write_pdf
 from gestorpsi.util.models import Cnae
+
 from gestorpsi.ehr.views import _access_ehr_check_read
 from gestorpsi.place.models import Place
 
@@ -155,7 +160,7 @@ def home(request, object_id=None):
         c += x.past_occurrences().count()
 
     if not object.is_active():
-        messages.success(request,  _('This client is not enabled.'))
+        messages.info(request,  _('This client is not enabled.'))
 
     return render_to_response('client/client_home.html',
                                         {
@@ -164,7 +169,6 @@ def home(request, object_id=None):
                                         'referrals_discharged': referrals_discharged,
                                         'service_subscribers': Service.objects.filter(referral__client = object).distinct().count(),
                                         'care_delivered': c,
-                    			'clss':request.GET.get('clss'),
                                         },
                                         context_instance=RequestContext(request)
                             )
@@ -387,7 +391,6 @@ def form(request, object_id=''):
                                 'Relations': Relation.objects.all(),
                                 'profile': profile,
                                 'groups': groups,
-                                'clss': request.GET.get('clss'),
                                 'company_form': company_form,
                                 'cnae': cnae,
                                },
@@ -441,8 +444,6 @@ def referral_plus_form(request, object_id=None, referral_id=None):
     referral_form.fields['referral'].queryset = Referral.objects.filter(client=object)
     referral_form.fields['service'].queryset = Service.objects.filter(active=True, organization=request.user.get_profile().org_active)
     referral_form.fields['client'].queryset = Client.objects.filter(person__organization = request.user.get_profile().org_active.id, active = True)
-
-    total_service = Referral.objects.filter(client=object).count()
 
     return render_to_response('client/client_referral_plus_form.html',
                               {'object': object, 
@@ -522,10 +523,6 @@ def referral_form(request, object_id=None, referral_id=None):
                 messages.success(request, _(msg))
                 return HttpResponseRedirect(url % (object_id, data.id))
 
-        # for debug
-        #else:
-            #print form.errors
-
     # show just professional that are have subscription in a selected service
     # update 
     if referral.id:
@@ -553,8 +550,6 @@ def referral_form(request, object_id=None, referral_id=None):
     form.fields['referral'].queryset = Referral.objects.filter(client=object)
     form.fields['service'].queryset = Service.objects.filter(active=True, organization=request.user.get_profile().org_active)
     form.fields['client'].queryset = Client.objects.filter(person__organization = request.user.get_profile().org_active.id, active = True)
-
-    total_service = Referral.objects.filter(client=object).count()
 
     return render_to_response('client/client_referral_form.html',
                               { 'object': object, 
@@ -613,8 +608,6 @@ def referral_plus_save(request, object_id=None):
                 for c in request.POST.getlist('client'):
                     gm = GroupMembers(group=group, client=Client.objects.get(pk = object_id, person__organization=request.user.get_profile().org_active), referral=object)
                     gm.save()
-        #else:
-            #print form.errors
     messages.success(request, _('Referral saved successfully'))
 
     return HttpResponseRedirect('/client/%s/referral/' % (request.POST.get('client_id')))
@@ -659,7 +652,7 @@ def referral_save(request, object_id = None, referral_id = None):
                 url = '/client/%s/referral/%s/'
                 msg = _('Referral saved successfully')
             else:
-                url = '/client/%s/referral/%s/?clss=error'
+                url = '/client/%s/referral/%s/'
                 msg = _('Service is deactive. Impossible register a referral.')
         else:
             return render_to_response('client/client_referral_form.html', locals(), context_instance=RequestContext(request))
@@ -678,8 +671,8 @@ def referral_discharge_form(request, object_id = None, referral_id = None, disch
         return render_to_response('403.html', {'object': _("Oops! You don't have access for this service!"), }, context_instance=RequestContext(request))
 
     if referral.on_queue():
-        messages.success(request, _('Sorry, you can not discharge a queued referral. Remove it from queue first before to continue'))
-        return HttpResponseRedirect('/client/%s/referral/%s/?clss=error' % (object.id, referral.id))
+        messages.error(request, _('Sorry, you can not discharge a queued referral. Remove it from queue first before to continue'))
+        return HttpResponseRedirect('/client/%s/referral/%s/' % (object.id, referral.id))
 
     instance = None
 
@@ -707,7 +700,7 @@ def referral_discharge_form(request, object_id = None, referral_id = None, disch
                     messages.success(request, _('Referral discharge updated successfully'))
                 return HttpResponseRedirect('/client/%s/home/' % (object.id))
             else:
-                messages.success(request, _('Form Error'))
+                messages.error(request, _('Form Error'))
                 return render_to_response('client/client_referral_discharge_form.html', locals(), context_instance=RequestContext(request))
         else:
             if not instance:
@@ -718,8 +711,8 @@ def referral_discharge_form(request, object_id = None, referral_id = None, disch
         return render_to_response('client/client_referral_discharge_form.html', locals(), context_instance=RequestContext(request))
 
     else:
-        messages.success(request, _('Registered have hour in the schedule'))
-        return HttpResponseRedirect('/client/%s/referral/%s/?clss=error' % (object.id, referral.id))
+        messages.info(request, _('Registered have hour in the schedule'))
+        return HttpResponseRedirect('/client/%s/referral/%s/' % (object.id, referral.id))
 
 @permission_required_with_403('referral.referral_list')
 def referral_list(request, object_id = None, discharged = None):
@@ -889,8 +882,7 @@ def organization_clients(request):
         clients = clients.filter(person__name__istartswith=request.GET.get('q'))
     
     dict = {}
-    array = [] #json
-    i = 0
+    array = []
 
     for o in clients:
         c = {
@@ -923,8 +915,7 @@ def order(request, object_id = ''):
             object.set_deactive()
             messages.success(request, _('User deactivated successfully'))
         else:
-            messages.success(request, _('Sorry, you can not deactivate a client with registered referral'))
-            url += '?clss=error'
+            messages.error(request, _('Sorry, you can not deactivate a client with registered referral'))
         
     return HttpResponseRedirect(url % object.id)
 
@@ -945,8 +936,8 @@ def schedule_daily(
         return render_to_response('403.html', {'object': _("Oops! You don't have access for this service!"), }, context_instance=RequestContext(request))
 
     if referral.on_queue():
-        messages.success(request, _('Sorry, you can not book a queued client. Remove it first from queue before continue'))
-        return HttpResponseRedirect('/client/%s/referral/%s/?clss=error' % (request.GET.get('client'), referral.id))
+        messages.error(request, _('Sorry, you can not book a queued client. Remove it first from queue before continue'))
+        return HttpResponseRedirect('/client/%s/referral/%s/' % (request.GET.get('client'), referral.id))
     
     if Place.objects.filter( organization=request.user.get_profile().org_active, place_type__id=1 ):
         place = Place.objects.filter( organization=request.user.get_profile().org_active, place_type__id=1 )[0] # place type = matriz
@@ -1036,12 +1027,12 @@ def referral_queue(request, object_id = '',  referral_id = ''):
         return render_to_response('403.html', {'object': _("Oops! You don't have access for this service!"), }, context_instance=RequestContext(request))
 
     if referral.on_queue():
-        messages.success(request, _('Error adding to queue! Referral is already queued'))
-        return HttpResponseRedirect('/client/%s/referral/%s/?clss=error' % (object.id, referral.id))
+        messages.error(request, _('Error adding to queue! Referral is already queued'))
+        return HttpResponseRedirect('/client/%s/referral/%s/' % (object.id, referral.id))
 
     if referral.upcoming_occurrences():
-        messages.success(request, _('Error adding to queue! Referral have upcoming occurrences'))
-        return HttpResponseRedirect('/client/%s/referral/%s/?clss=error' % (object.id, referral.id))
+        messages.error(request, _('Error adding to queue! Referral have upcoming occurrences'))
+        return HttpResponseRedirect('/client/%s/referral/%s/' % (object.id, referral.id))
 
     form=QueueForm()
     return render_to_response("client/client_referral_queue.html", locals(), context_instance=RequestContext(request))
@@ -1057,12 +1048,12 @@ def referral_queue_save(request, object_id = '',  referral_id = ''):
     referral = get_object_or_404(Referral, pk=referral_id, service__organization=request.user.get_profile().org_active)
 
     if referral.on_queue():
-        messages.success(request, _('Error adding to queue! Referral is already queued'))
-        return HttpResponseRedirect('/client/%s/referral/%s/?clss=error' % (object.id, referral.id))
+        messages.error(request, _('Error adding to queue! Referral is already queued'))
+        return HttpResponseRedirect('/client/%s/referral/%s/' % (object.id, referral.id))
 
     if referral.upcoming_occurrences():
-        messages.success(request, _('Subscript in the queue not is possible. Referral have upcoming occurrences'))
-        return HttpResponseRedirect('/client/%s/referral/%s/?clss=error' % (object.id, referral.id))
+        messages.error(request, _('Subscript in the queue not is possible. Referral have upcoming occurrences'))
+        return HttpResponseRedirect('/client/%s/referral/%s/' % (object.id, referral.id))
 
     form = QueueForm(request.POST)
 
@@ -1079,10 +1070,6 @@ def referral_queue_save(request, object_id = '',  referral_id = ''):
         except:
             object_q.priority = '03'
         object_q.save()
-    #else:
-        #print form.errors
-
-    queues = Queue.objects.filter(referral=referral_id)
 
     messages.success(request, _('Referral added to queue successfully'))
     return HttpResponseRedirect('/client/%s/referral/%s/' % (object.id, referral.id))
@@ -1102,8 +1089,6 @@ def referral_queue_remove(request, object_id = '',  referral_id = '', queue_id =
     
     queue.date_out = datetime.now()
     queue.save()
-
-    queues = Queue.objects.filter(referral=referral_id)
 
     messages.success(request, _('Client removed from queue successfully'))
     return HttpResponseRedirect('/client/%s/referral/%s/' % (object.id, referral.id))
@@ -1146,8 +1131,6 @@ def referral_ext_save(request, object_id = '', referral_id=''):
         referral_ext.professional = get_object_or_None(CareProfessional, pk = request.POST.get('professional') )
         referral_ext.organization = get_object_or_None(Organization, pk = request.POST.get('organization') )
         referral_ext.save()
-    #else:
-        #print form.errors
 
     messages.success(request, _('External Referral saved successfully'))
     return render_to_response('client/client_referral_home.html', locals(), context_instance=RequestContext(request))
@@ -1249,7 +1232,7 @@ def company_related_form(request, object_id = None, company_client_id=None):
 
     if request.method == 'POST':
         if request.POST.get('client_id') in [i.client.pk for i in object.employees()]:
-            messages.success(request, _('Employee already registered on this company'))
+            messages.info(request, _('Employee already registered on this company'))
             return HttpResponseRedirect('/client/%s/company_clients/' % object.id)
 
         if company_client_id:

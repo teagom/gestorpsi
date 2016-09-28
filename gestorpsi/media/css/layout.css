@@ -358,7 +358,7 @@ div.main_area h1 {
         line-height: 24px;
         color: #808080;
         font-weight: normal;
-        padding: 15px 0 7px 70px;
+        padding: 15px 0px 7px 70px;
         height: 45px;
 }
 #content p {
@@ -416,15 +416,23 @@ div.main_area h1 {
 #core #msg_area, #core .msg_area { margin:20px;}
 #core #msg_area, .main_area .msg_area, .main_area #msg_area { text-align:left; font-size: 12px; padding: 15px;}
 .main_area .msg_area.error { border: 2px solid #FF0000; }
-#core #msg_area, .main_area #msg_area.alert,.main_area .msg_area.alert {border: 2px solid #FFFF00; }
 
 #msg_area a.close_link { float:right; margin-top:5px;}
-#msg_area.alert, #helping, .msg_area.alert {
-        background:green;
+
+.invoice_alert_message { 
+    font-weight: bold;
+}
+
+#msg_area.success, .msg_area.success {
+        background:#5CB85C;
+        color: white;
+}
+#msg_area.info, .msg_area.info {
+        background:#F0AD4E;
         color: white;
 }
 #msg_area.error, .msg_area.error {
-        background:red;
+        background:#D9534F;
         color: white;
 }
 
@@ -767,13 +775,13 @@ select.high {
         padding: 0
 }
 .sidebar_client_top h3 {
-        border-bottom: 1px solid #000000;
-        margin-top: 10px;
-        font-family: Georgia, "Times New Roman", Times, serif;
-        font-size: 16px;
-        font-weight: normal;
-        padding-bottom: 2px;
-        letter-spacing: 0.05em;
+    background-color: #005a7d;
+    color: white;
+    padding: 3px;
+    letter-spacing: 0.05em;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    font-size: 16px;
+    font-weight: bold;
 }
 .sidebar_client_top ul {
         margin: 10px 0;
@@ -854,13 +862,14 @@ select.high {
         padding: 0
 }
 .sidebar_client h3 {
-        border-bottom: 1px solid #000000;
-        margin-top: 10px;
-        font-family: Georgia, "Times New Roman", Times, serif;
-        font-size: 16px;
-        font-weight: normal;
-        padding-bottom: 2px;
-        letter-spacing: 0.05em;
+    margin-top: 10px;
+    background-color: #005a7d;
+    color: white;
+    padding: 3px;
+    letter-spacing: 0.05em;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    font-size: 16px;
+    font-weight: bold;
 }
 .sidebar_client ul {
         margin: 10px 0;
@@ -1120,17 +1129,7 @@ hr {
 .search_header_aditional { padding-left:0px; margin-bottom:25px; margin-top:10px }
 .search_header_aditional select { background-color:#fff; border: 2px solid #ccc; padding:6px; color:#444; width:100%}
 div.schedule #search_header {
-        padding-left: 90px;
-}
-
-#nav_back, #nav_fwd {
-        position: absolute;
-        left: 10px;
-        top: 170px;
-        z-index: 3;
-}
-#nav_fwd {
-        left: 60px;
+        padding-left: 100px;
 }
 
 .capital_letter {
@@ -1275,25 +1274,23 @@ div.schedule #search_header {
 }
 
 div.photo_form_upload {
-        position: fixed;
-        margin-top: -110px;
-        margin-left: 350px;
-        _margin-left: -350px;
-        _margin-top: -100px;
+        display:none;
         background-color: #fff;
         border: 1px solid black;
-        padding: 30px 30px 30px 30px;
-        width: 270px;
-        height: 70px;
-        display:none;
-        z-index: 10001;
+        padding: 30px;
+        position: absolute;
+        margin-top: 0;
+        margin-left: 1%;
+        width: 40%;
+        height: 90px;
+        z-index: 10;
 }
 
 #over {
         width: 110%;
         position: fixed;
         margin: -55px 0 75px -22px;
-        background-color: #fff;
+        background-color: gray;
         z-index: 6;
         min-height: 1080px;
         opacity: 0.7;
@@ -1545,7 +1542,16 @@ table.devices td.item {
 /***********LOGIN*************/
 
 body .main_area.login {
-        width: 320px;
+        width: 346px;
+        margin: 50px auto;
+        float: none;
+        border: none;
+        background: none;
+        text-align: center;
+}
+
+.select_org {
+        width: 100%;
         margin: 50px auto;
         float: none;
         border: none;
@@ -1674,12 +1680,15 @@ ul.paginator li.next {
 /**
  django forms
 */
+.terms_of_service { 
+    padding: 0px 5px 0px 5px;
+}
 
 ul.errorlist li {
     color: red;
-    list-style: none;
+    /*list-style: none;*/
     padding: 0px;
-    margin-top: 15px;
+    /*margin-top: 15px;*/
     margin-left: 10px;
     font-weight: bold;
 }
@@ -1700,11 +1709,6 @@ form fieldset li {
 
     float: left;
     padding-left:5px;
-}
-
-div.read-only {
-        background:#FFCCCC;
-        padding: 10px;
 }
 
 div.overflow ul li { clear:both; display:block; padding:0px; margin:0px !important; }
@@ -1894,3 +1898,13 @@ table.sign_history tbody tr.even {
 }
 
 form.schedule_occurrence li { float:none !important;}
+
+.title_gpsi { 
+    font-size: 30px;
+    background-color: #005a7d;
+    color:white;
+    letter-spacing: 5px;
+    font-weight: bold;
+    margin: 10px 10px 0;
+    padding: 5px;
+}

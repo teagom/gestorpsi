@@ -22,9 +22,8 @@ GNU General Public License for more details.
     vertical-align: text-bottom;
 }
 #nav_back {
-	padding: 32px 40px 12px 8px;
-    /*margin-bottom: -20px;*/
 	background: url(/media/img/arrow_back.png) no-repeat 0 0;
+    margin-left: 15px;
 }
 #nav_back.disable {background: url(/media/img/arrow_back_disable.png)}
 #nav_back:hover { 
@@ -32,13 +31,21 @@ GNU General Public License for more details.
 	text-decoration: none; 
 }
 #nav_fwd {
-	padding: 32px 36px 12px 6px;
 	background: url(/media/img/arrow_fwd.png) no-repeat 0 0; 
+    margin-left: 5px;
 }
 #nav_fwd.disable {background: url(/media/img/arrow_fwd_disable.png) no-repeat;}
 #nav_fwd:hover {
 	background: url(/media/img/arrow_fwd_on.png) no-repeat 0 0;
 	text-decoration: none; 
+}
+
+#nav_back, #nav_fwd {
+    margin-top:9px;
+    padding: 32px 40px 5px 5px;
+    float:left;
+    position: relative;
+    z-index: 2;
 }
 
 table.schedule_results.daily th, table.schedule_results.weekly th {
@@ -139,10 +146,10 @@ div.filter.professional td span {	cursor: pointer; position: relative; padding-l
 }
 #calendar_link {
     position: absolute;
-    top: 116px;
-    left: 24px;
+    margin-top: 15px;
+    margin-left: 30px;
     display: block;
-    height: 40px;
+    height: 35px;
     width: 40px;
 }
 #calendar {
@@ -183,8 +190,7 @@ div.schedule h2.title_schedule {
 
 div#mini_calendar {
     position: absolute;
-	top: 150px;
-    margin: 0 0 0 20px;
+    margin: 60px 0 0 20px;
 	z-index: 5;
 }
 
@@ -236,7 +242,8 @@ div.sidebar_client_schedule {
 .margin_top_fix { margin-top: 45px; }
 
 #schedule_week td {  background:#efefef; }
-#schedule_week td.weekly_occurrences  { vertical-align:top;height: 500px;}
+/*#schedule_week td.weekly_occurrences  { vertical-align:top;height: 500px;}*/
+#schedule_week td.weekly_occurrences  { vertical-align:top;}
 #schedule_week td div { margin-top:0px; border:1px solid white;}
 td.no_events { text-align:center; padding:20px; color: #777;}
 

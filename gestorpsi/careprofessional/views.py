@@ -23,32 +23,43 @@ from django.contrib import messages
 from gestorpsi.person.models import Person, MaritalStatus
 from gestorpsi.person.views import person_json_list, person_save
 from gestorpsi.careprofessional.models import ProfessionalProfile, ProfessionalIdentification, CareProfessional, Profession
+from gestorpsi.careprofessional.forms import StudentProfileForm
 from gestorpsi.phone.models import PhoneType
 from gestorpsi.address.models import Country, State, AddressType, City
 from gestorpsi.internet.models import EmailType, IMNetwork
 from gestorpsi.document.models import TypeDocument, Issuer
-from gestorpsi.place.models import Place, PlaceType
+from gestorpsi.place.models import Place, PlaceType, HOURS
 from gestorpsi.service.models import Service
 from gestorpsi.referral.models import Referral, ReferralDischargeReason, ReferralDischarge
 from gestorpsi.util.decorators import permission_required_with_403
 from gestorpsi.util.views import get_object_or_None
-from gestorpsi.careprofessional.forms import StudentProfileForm
 from gestorpsi.schedule.models import OccurrenceConfirmation
+from gestorpsi.client.models import Client
 
 
 @permission_required_with_403('careprofessional.careprofessional_list')
-def index(request, template_name='careprofessional/careprofessional_list.html', deactive = False):
+def index(request, template_name='careprofessional/careprofessional_list.html', deactive=False):
+
+    # show active tab
+    if deactive:
+        action_tab_deactive = True
+    else:
+        action_tab_index = True
+
     return render_to_response(template_name, locals(), context_instance=RequestContext(request))
 
   
 @permission_required_with_403('careprofessional.careprofessional_list')
-def list(request, page = 1, deactive = False, filter = None, initial = None, no_paging = False, is_student = False ):
-    if not is_student: # professional
+def list(request, page=1, deactive=False, filter=None, initial=None, no_paging=False, is_student=False ):
+
+    # professional
+    if not is_student:
         if deactive:
             object = CareProfessional.objects.deactive(request.user.get_profile().org_active)
         else:
             object = CareProfessional.objects.active(request.user.get_profile().org_active)
-    else: # stundent
+    # stundent
+    else:
         if deactive:
             object = CareProfessional.objects.students_deactive(request.user.get_profile().org_active)
         else:
@@ -64,14 +75,16 @@ def list(request, page = 1, deactive = False, filter = None, initial = None, no_
 
 
 @permission_required_with_403('careprofessional.careprofessional_read')
-def form(request, object_id=None, template_name='careprofessional/careprofessional_form.html', is_student = False):
+def form(request, object_id=None, template_name='careprofessional/careprofessional_form.html', is_student=False):
 
     if object_id:
         object = get_object_or_404(CareProfessional, pk=object_id, person__organization=request.user.get_profile().org_active)
+        tab = 'edit'
     else:
         if not request.user.has_perm('careprofessional.careprofessional_write'):
             return render_to_response('403.html', {'object': _("Oops! You don't have access for this service!"), }, context_instance=RequestContext(request))
 
+        tab = 'add'
         object = CareProfessional()
 
     try:
@@ -86,10 +99,9 @@ def form(request, object_id=None, template_name='careprofessional/careprofession
         ServiceTypes = Service.objects.filter( active=True, organization=request.user.get_profile().org_active)
 
     if not object.active:
-        messages.success(request,  _('This professional is not enabled.'))
+        messages.info(request,  _('This professional is not enabled.'))
 
     return render_to_response(template_name, {
-                                    'clss':request.GET.get('clss'),
                                     'object': object,
                                     'student_form': student_form if is_student else None,
                                     'phones' : None if not hasattr(object, 'person') else object.person.phones.all(),
@@ -113,7 +125,9 @@ def form(request, object_id=None, template_name='careprofessional/careprofession
                                     'ServiceTypes': ServiceTypes,
                                     'Cities': cities,
                                     'ReferralDischargeReason': None if not object.have_referral_charged else ReferralDischargeReason.objects.all(),
-                                    },
+                                    'hours': HOURS,
+                                    'action_tab_form': tab, # show tab active
+                                    }, 
                               context_instance=RequestContext(request)
                               )
 
@@ -135,6 +149,7 @@ def save_careprof(request, object_id, save_person, is_student=False):
 
     if save_person:
         object.person = person_save(request, get_object_or_None(Person, pk=object.person_id) or Person())
+
     object.save()
 
     '''
@@ -220,10 +235,10 @@ def save(request, object_id=None, save_person=True, is_student=False):
 
         # english error message
         #messages.error(request, _('Impossible discharged of the service. Exist referral to this professional. Service(s) <br /> %s' % msg ))
-        #return HttpResponseRedirect(('/careprofessional/%s/?clss=error' % object.id))
+        #return HttpResponseRedirect(('/careprofessional/%s/' % object.id))
 
         messages.error(request, _(u'Serviço não pode ser desligado. Existe inscrição para esse profissional. Serviço<br />%s' % msg ))
-        return HttpResponseRedirect(('/careprofessional/%s/?clss=error' % object.id))
+        return HttpResponseRedirect(('/careprofessional/%s/' % object.id))
     else:
         messages.success(request, _('Professional saved successfully') if not is_student else _('Student saved successfully'))
         return HttpResponseRedirect(('/careprofessional/%s/' % object.id) if not is_student else ('/careprofessional/student/%s/' % object.id))
@@ -231,7 +246,9 @@ def save(request, object_id=None, save_person=True, is_student=False):
 
 @permission_required_with_403('careprofessional.careprofessional_write')
 def order(request, object_id=None, is_student=False):
+
     object = get_object_or_404(CareProfessional, pk=object_id, person__organization=request.user.get_profile().org_active)
+
     if (object.active == True):
         if object.resp_services.filter(active=True):
             messages.error(request, _('Sorry, you can not disable a responsible professional with active service(s)'))
@@ -277,3 +294,29 @@ def order(request, object_id=None, is_student=False):
         (_('activated') if object.active else _('deactivated')), \
         _('successfully'))))
     return HttpResponseRedirect(('/careprofessional/%s/' % object.id) if not is_student else ('/careprofessional/student/%s/' % object.id))
+
+
+# permission
+def client_list(request, object_id=False, active=True):
+    """
+        list of clients of careprofessional
+        id : Careprofessional.id
+        active : Client active or inactive
+    """
+    action_tab_client_list = True # show active tab
+    client_list_filter = _('Active') if active == str(1) else _('Inactive') # show filter
+
+    # fix filter
+    object = get_object_or_404(CareProfessional, pk=object_id, person__organization=request.user.get_profile().org_active)
+
+    """
+        referral have professional and client.
+        get all clients of professional by referral.
+    """
+    # filter by Client.active
+    if active == str(1):
+        client_list = Client.objects.filter(referral__professional=object, person__organization=request.user.get_profile().org_active, active=True).order_by('person__name').distinct()
+    else:
+        client_list = Client.objects.filter(referral__professional=object, person__organization=request.user.get_profile().org_active, active=False).order_by('person__name').distinct()
+
+    return render_to_response('careprofessional/careprofessional_client_list.html', locals(), context_instance=RequestContext(request))

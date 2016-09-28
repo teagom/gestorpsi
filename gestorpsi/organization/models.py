@@ -31,7 +31,6 @@ from gestorpsi.util.uuid_field import UuidField
 from gestorpsi.util.first_capitalized import first_capitalized
 
 from gestorpsi.gcm.models.plan import Plan
-from gestorpsi.gcm.models.invoice import Invoice
 from gestorpsi.gcm.models.payment import PaymentType
 
 class ProfessionalResponsible(models.Model):
@@ -178,8 +177,20 @@ class OrganizationManager(models.Manager):
         return super(OrganizationManager, self).get_query_set().filter(active=True, organization__isnull=True)
 
 
+DEFAULT_SCHEDULE_VIEW = ( 
+        ('0',u'Diária'),
+        ('1',u'Semanal'),
+        ('2',u'Eventos'),
+)
+
 TIME_SLOT_SCHEDULE = ( 
+            ("05",'05'),
+            ("10",'10'),
+            ("15",'15'),
+            ("20",'20'),
+            ("25",'25'),
             ("30",'30'),
+            ("35",'35'),
             ("40",'40'),
             ("45",'45'),
             ("50",'50'),
@@ -249,7 +260,9 @@ class Organization(models.Model):
     default_payment_day.verbose_name = _("Default payment day")
     default_payment_day.help_text= _("The default day in which the billets have to be paid at the most by this organization.")
 
+    # schedule organization settings
     time_slot_schedule = models.CharField(u"Tempo de cada consulta (minutos)", null=False, blank=False, choices=TIME_SLOT_SCHEDULE, max_length=2, default=30)
+    default_schedule_view = models.CharField(u"Vizualização padrao", null=False, blank=False, choices=DEFAULT_SCHEDULE_VIEW, max_length=2, default=0)
     
     objects = OrganizationManager()
 
@@ -283,7 +296,7 @@ class Organization(models.Model):
             self.active = False
         else:
             # read only?
-            if self.invoice_()[2]: # one not payed overdue invoice
+            if self.invoice_()[4]: # one not payed overdue invoice
                 self.active = False
             else:
                 self.active = True
@@ -291,6 +304,7 @@ class Organization(models.Model):
 
         super(Organization, self).save(*args, **kwargs)
         
+        # change users for read-only
         if self.id and original_state:
             if original_state.active != self.active and not original_state.organization: # active state has been changed and organization is a real organization
                 if not self.active: # organization has been deactivated, lets set all users as read-only mode
@@ -377,6 +391,61 @@ class Organization(models.Model):
         return self.service_set.filter(active=True)
 
 
+    '''
+        show alert message to org become read only
+        return integer, number of days to become read only
+            messagem level:
+                1 : information : days > 2 and days < 8
+                2 : error/danger  days <= 2
+                    if 2 = False : out of range days / dont show message
+                3 : error/dange 
+                    limit date to pay is today!
+    '''
+    def get_alert_to_readonly__(self):
+
+        # last current invoice
+        """
+            current invoice maybe not exist.
+            client suspend signature, than, have just pass invoices.
+            organization, read only.
+        """
+
+        i = self.invoice_()[1][0] # get last one current invoice
+        # current invoice is PAID! no message!
+        days = 999 # days left to overdue invoice
+
+        if i.status == 0 :
+            days = (i.expiry_date-(date.today())).days
+
+        """
+            check negative days, -5
+            if days = -10
+                org become read only by script, run everyday.
+            Invoice is overdue!
+        """
+
+        r = [False]*2
+        # 0 : days to read only
+        # 1 : message level
+            # 1 yellow - info
+            # 2,3 red - error/danger
+
+        # day = 0,1,2,3,4,5,6 and 7
+        if days < 8 and days > -1 :
+
+            r[0] = days
+
+            if days <= 2:
+                r[1] = 2
+            else:
+                r[1] = 1
+
+            # last check, limit is today
+            if days == 0:
+                r[1] = 3
+
+        return r
+
 
     '''
         return number of rooms from org
@@ -391,33 +460,39 @@ class Organization(models.Model):
     '''
         retorna todas as faturas
         array
-            0 = proxima
+            0 = proxima/futuro
             1 = corrente/atual
-            2 = vencida
+            2 = passado e pendente
+            3 = passado e paga
+            4 = pendente/vencido/não pago
 
         filter pago ou não no html
     '''
     def invoice_(self):
 
-        r = [False]*4
+        r = [False]*5
 
         # future
-        r[0] = self.invoice_set.filter( start_date__gt=date.today() )
+        r[0] = self.invoice_set.filter( start_date__gte=date.today(), end_date__gt=date.today(), expiry_date__gt=date.today() )
 
         # current 
-        r[1] = self.invoice_set.filter( start_date__lte=date.today(), end_date__gte=date.today() )
+        r[1] = self.invoice_set.filter( start_date__lt=date.today(), end_date__gte=date.today() )
 
         # past
-        # 1t of all overdue invoices
+        # 1t passado e pendente
         r[2] = []
         for x in self.invoice_set.filter( start_date__lt=date.today(), end_date__lt=date.today(), status=0 ).order_by('-end_date'):
             r[2].append(x)
 
+        # 2t passado e pago
         # copy r2
         import copy
         r[3] = copy.deepcopy(r[2])
-        for x in self.invoice_set.filter( start_date__lt=date.today(), end_date__lt=date.today, status__gt=0).order_by('-date'):
+        for x in self.invoice_set.filter( start_date__lt=date.today(), end_date__lt=date.today, status__gt=0 ).order_by('-date'):
             r[3].append(x)
+
+        # pendente / não pago / vencido / current or pass invoice
+        r[4] = self.invoice_set.filter( start_date__lt=date.today(), expiry_date__lt=date.today(), status=0 )
 
         return r
 

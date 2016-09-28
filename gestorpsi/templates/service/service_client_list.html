@@ -25,69 +25,81 @@ GNU General Public License for more details.
 {% block submenu %}
     <ul>
         <li><a class="first" href="/service/">{% trans "all" %}</a></li>
+
         {% if perms.service.service_write %}
-        <li><a class="{% if not object.id %}active{% endif %}" href="/service/add/">{% trans "Add Service" %}</a></li>
+            <li><a class="{% if not object.id %}active{% endif %}" href="/service/add/">{% trans "Add Service" %}</a></li>
         {% endif %}
+
         {% if object.id %}<li><a class="active">{% trans "Client list" %}&nbsp;-&nbsp;{{ object }}</a></li>{% endif %}
     </ul>
 {% endblock %}
 
 {% block core %}
+    <div class="registers_available">
 
-<div class="registers_available">
         <h2 class="title_clients">{% trans "Client list" %}&nbsp;-&nbsp;{{ object.name_html_inline|safe }}</h2>
         <p class="description">{% trans "Displaying" %} <span id="object_length">{{ client_list|length }}</span> {% trans "clients(s)" %}.</p>
-        
+            
         <div class="main_area contact">
-            {% comment %}
-            <div id="search_header" class="service_client_search active">
-                {% include "tags/search_header.html" %}
-            </div>
-            {% endcomment %}
+            {% if not client_list %}
 
-        {% if not client_list %}
-            <div id="msg_area" class="alert no_registers_available">
-                {% trans "There is no client subscribed in this service." %}<br />
-            </div>
-        {% else %}
-            <table id="search_results" class="zebra newtab" border="0" cellpadding="0" cellspacing="0">
-            <input name="service_id" id="service_id" value="e6617255-dc9f-4f7f-a518-f22f451f4bc1" type="hidden">
+                <div id="msg_area" class="alert no_registers_available">
+                    {% trans "There is no client subscribed in this service." %}<br />
+                </div>
 
-                <thead> 
-                        <tr class="zebra_1"> 
-                        <th></th> 
-                        <th></th> 
-                        </tr> 
-                </thead>
-                <tbody>
-                    {% for i in client_list %}
-                        <tr class="zebra_{% cycle 0,1 %}">
-                        <td class="title"><a href="/client/{{i.id}}/home/">{{ i }}</a> {% if not i.active %}({% trans "deactivated" %}){% endif %}
-                        {% for rc in i.referrals_charged %}
-                            {% if rc.service == object %}
-                            <br />
-                            {% trans "Referral ID" %}: <b><a href="/client/{{ i.id }}/referral/{{ rc.pk }}/">#{{ rc.pk }}</a></b>
-                            {% if rc.professional.all %}<br />{% trans "Professionals" %}:</b> {% for p in rc.professional.all %}<a href="/careprofessional/{{ p.id }}/">{{ p }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}{% endif %}
-                            <br />{% trans "all past occurrences (inclunding unmarked e remarked)" %}:</b> {{ rc.past_occurrences_all|length }}
-                            <br />
-                            {% endif %}
-                        {% endfor %}
-                        </td>
-                        <td>&nbsp;</td>
-                        </tr>
-                    {% endfor%}
+            {% else %}
+
+                <table id="search_results" class="zebra newtab" border="0" cellpadding="0" cellspacing="0">
+
+                        <thead> 
+                            <tr class="zebra_1"> 
+                                <th></th> 
+                                <th></th> 
+                            </tr> 
+                        </thead>
+
+                        <tbody>
+                            {% for i in client_list %}
+                                <tr class="zebra_{% cycle 0,1 %}">
+                                    <td class="title">
+                                        
+                                        <a href="{% url client-home i.id %}">{{ i.person.name }}</a> {% if not i.active %}({% trans "deactivated" %}){% endif %}
+
+                                        {% for rc in i.referrals_charged %}
+                                            {% if rc.service == object %}
+
+                                                <br />
+                                                {% trans "Referral ID" %}: <a href="{% url client-referral-home i.id  rc.pk %}"><b>#{{ rc.pk }}</b></a>
+
+                                                {% if rc.professional.all.0 %}
+                                                    <br />
+                                                    {% trans "Professionals" %}:
+                                                    {% for p in rc.professional.all %}<a href="{% url careprofessional-form p.id %}"><b>{{ p }}</b></a>
+                                                        {% if not forloop.last %}, {% endif %}
+                                                    {% endfor %}
+                                                {% endif %}
+
+                                                <br />
+                                                {% trans "all past occurrences (inclunding unmarked e remarked)" %}: <b>{{ rc.past_occurrences_all|length }}</b>
+
+                                            {% endif %}
+                                        {% endfor %}
+                                    </td>
+                                    <td>&nbsp;</td>
+                                </tr>
+                            {% endfor%}
+
+                        </tbody>
                 </table>
 
-                </tbody>
-                </table>
-                {# {% include "tags/paginator.html"%} #}
-                {% endif %}
+            {# {% include "tags/paginator.html"%} #}
+            {% endif %}
+
         </div>
 
-<div id="sidebar" class="sidebar_client_top">
-    {% include "tags/service_sidebar.html" %}
-</div>
+        <div id="sidebar" class="sidebar_client_top">
+            {% include "tags/service_sidebar.html" %}
+        </div>
 
-
-</div>
+    </div>
 {% endblock %}

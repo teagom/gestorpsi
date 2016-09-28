@@ -39,7 +39,7 @@ from gestorpsi.util.decorators import permission_required_with_403
 from gestorpsi.util.views import get_object_or_None
 from gestorpsi.schedule.forms import OccurrenceConfirmationForm
 from gestorpsi.device.models import DeviceDetails
-from gestorpsi.organization.models import TIME_SLOT_SCHEDULE
+from gestorpsi.organization.models import TIME_SLOT_SCHEDULE, DEFAULT_SCHEDULE_VIEW
 from gestorpsi.financial.models import Receive
 from gestorpsi.financial.forms import ReceiveFormUpdate, ReceiveFormNew
 from gestorpsi.covenant.models import Covenant
@@ -653,9 +653,21 @@ def _datetime_view(
     )
 
 
+@permission_required_with_403('schedule.schedule_list')
+def schedule_index(request):
+
+    if request.user.get_profile().org_active.default_schedule_view == '0':
+        return http.HttpResponseRedirect('/schedule/diary/')
+
+    if request.user.get_profile().org_active.default_schedule_view == '1':
+        return http.HttpResponseRedirect('/schedule/week/')
+
+    if request.user.get_profile().org_active.default_schedule_view == '2':
+        return http.HttpResponseRedirect('/schedule/events/')
+
 
 @permission_required_with_403('schedule.schedule_list')
-def schedule_index(request, 
+def diary_view(request, 
         year = datetime.now().strftime("%Y"), 
         month = datetime.now().strftime("%m"), 
         day = datetime.now().strftime("%d"), 
@@ -699,9 +711,10 @@ def week_view(request,
 
 
 def week_view_table(request,
-    year = datetime.now().strftime("%Y"), 
-    month = datetime.now().strftime("%m"), 
-    day = datetime.now().strftime("%d"), ):
+        year = datetime.now().strftime("%Y"), 
+        month = datetime.now().strftime("%m"), 
+        day = datetime.now().strftime("%d"), 
+    ):
 
     if not year or not month or not day:
         today = datetime.now()
@@ -711,39 +724,84 @@ def week_view_table(request,
     first_week_day = today - timedelta(days=today.weekday())
 
     week = []
-    occurrences = []
-    occurrences_length = 0
+    schedule = []
+    '''
+    schedule array
+        schedule = [ [period] ]
+            period = [ [period_list], occurrence_total , [days-week] ]
+                occurrence_total = total of occurrence of period; integer
+                    days-week = [ [monday] , ... , [sunday] ]
+                        monday = [occurrences objects]
     
-    for i in range(7):
-        occurrences_daily = []
-        week_day = first_week_day+timedelta(i)
-        week.append(week_day)
-        groups = []
-        for s in schedule_occurrences(request, week_day.strftime('%Y'), week_day.strftime('%m'), week_day.strftime('%d')):
-            if s.is_group():
-                if s.event.referral.group.pk not in groups:
-                    occurrences_daily.append({
-                        'is_group': True,
-                        'group_name': u'%s' % s.event.referral.group,
-                        'group_pk': s.event.referral.group.pk,
+    '''
+    occurrences_length_total = 0 # show resume top page
+
+    '''
+     period of day
+     array format
+             [0] = label
+             [1] = start time hour
+             [2] = start time minute
+             [3] = end time hour
+             [4] = end time minute
+             [5] = color
+    '''
+    period_list = []
+    period_list.append([u'Manhã 00:00 - 12:00',00,00,12,00,'green'])   # manha
+    period_list.append([u'Tarde 12:00 - 18:00',12,00,18,00,'orange'])  # tarde
+    period_list.append([U'Noite 18:00 - 24:00',18,00,23,59,'blue'])    # noite
+    
+    # for each period
+    for t in period_list:
+
+        occurrences_length = 0 # show resume per period
+        day = [] # array of days of week / new day
+        period = [] # a new period
+        period.append(t) # 0 / add label; time; color;
+        period.append(0) # 1 / total of occurrences of this period
+
+        # week day
+        for i in range(7):
+
+            week_day = first_week_day+timedelta(i)
+
+            if not week_day in week:
+                week.append(week_day)
+
+            # all occurrences of day
+            groups = []
+            occurrence = [] # occurrences of day
+
+            for s in schedule_occurrences(request, week_day.strftime('%Y'), week_day.strftime('%m'), week_day.strftime('%d'), t[1], t[2], t[3], t[4]):
+                if s.is_group():
+                    if s.event.referral.group.pk not in groups:
+                        occurrence.append({
+                            'is_group': True,
+                            'group_name': u'%s' % s.event.referral.group,
+                            'group_pk': s.event.referral.group.pk,
+                            'data': s,
+                        })
+                        groups.append(s.event.referral.group.pk)
+                        
+                else:
+                    occurrence.append({
+                        'is_group': False,
                         'data': s,
                     })
-                    groups.append(s.event.referral.group.pk)
-                    occurrences_length += 1
-                    
-            else:
-                occurrences_daily.append({
-                    'is_group': False,
-                    'data': s,
-                })
-                occurrences_length += 1
-        
-        occurrences.append(occurrences_daily)
+
+                occurrences_length += 1 # show resume top page
+                occurrences_length_total += 1 # total of occurrences of week
+
+            period[1] = occurrences_length # update occurrences counter of period
+
+            day.append(occurrence) # occurrence of day
+            period.append(day) # day of period
+        schedule.append(period) # period of schedule
 
     previous_week = today-timedelta(weeks=1)
     next_week = today+timedelta(weeks=1)
     last_week_day = first_week_day+timedelta(days=6)
-    
+
     return render_to_response('schedule/schedule_week_table.html', locals(), context_instance=RequestContext(request))
 
 
@@ -754,10 +812,17 @@ def today_occurrences(request):
 
 
 
-def schedule_occurrences(request, year = 1, month = 1, day = None):
+def schedule_occurrences(request, year=1, month=1, day=None, st_timeh=00, st_timem=00, ed_timeh=23, ed_timem=59):
+    '''
+        st_timeh = start time hour : integer
+        st_timem = start time minute : integer
+        ed_timeh = end time hour : integer
+        ed_timem = end time minute : integer
+    '''
+
     if day:
-        date_start = datetime.strptime("%s%s%s" % (year, month, day),"%Y%m%d")
-        date_end = date_start+timedelta(days=+1)
+        date_start = datetime.strptime("%s%s%s%s%s" % (year, month, day, st_timeh, st_timem),"%Y%m%d%H%M")
+        date_end = datetime.strptime("%s%s%s%s%s" % (year, month, day, ed_timeh, ed_timem),"%Y%m%d%H%M")
     else:
         date_start = datetime.strptime("%s%s" % (year, month),"%Y%m")
         date_end = date_start+timedelta( days=calendar.monthrange(int(year), int(month))[1] + 0)
@@ -765,7 +830,7 @@ def schedule_occurrences(request, year = 1, month = 1, day = None):
     objs = ScheduleOccurrence.objects.filter(
             start_time__gte=date_start,
             start_time__lt=date_end,
-            event__referral__organization=request.user.get_profile().org_active.id
+            event__referral__organization=request.user.get_profile().org_active
             ).exclude(occurrenceconfirmation__presence = 4 # unmarked's
             ).exclude(occurrenceconfirmation__presence = 5 # remarked
             ).exclude(room__place__active = False # exclude not active places
@@ -795,7 +860,7 @@ def daily_occurrences(request, year=1, month=1, day=None, place=None):
     array['util'] = {
         'date': ('%s-%s-%s' % (year, month, day)),
         'date_field': ('%s/%s/%s' % (year, month, day)),
-        u'str_date': '%s, %s %s %s %s %s' % (date.strftime("%A").decode('utf-8'), date.strftime("%d"), _('of'), date.strftime("%B").decode('utf-8'), _('of'), date.strftime("%Y")),
+        u'str_date': '%s, %s %s %s %s %s' % (date.strftime("%A").decode('utf-8').capitalize(), date.strftime("%d"), _('of'), date.strftime("%B").decode('utf-8'), _('of'), date.strftime("%Y")),
         'next_day': (date + timedelta(days=+1)).strftime("%Y/%m/%d"),
         'prev_day': (date + timedelta(days=-1)).strftime("%Y/%m/%d"),
         'weekday': date.weekday(),
@@ -878,7 +943,7 @@ def occurrence_family_form(request, occurence_id = None, template=None):
 
     if request.POST:
         if not request.POST.getlist('family_members'):
-            messages.success(request, _('No member family selected'))
+            messages.error(request, _('No member family selected'))
             return render_to_response(template, locals(), context_instance=RequestContext(request))
         
         if not hasattr(occurrence, 'occurrencefamily'):
@@ -908,7 +973,7 @@ def occurrence_employee_form(request, occurence_id = None, template=None):
 
     if request.POST:
         if not request.POST.getlist('company_employees'):
-            messages.success(request, _('No company employees selected'))
+            messages.error(request, _('No company employees selected'))
             return render_to_response(template, locals(), context_instance=RequestContext(request))
         
         if not hasattr(occurrence, 'occurrenceemployees'):
@@ -929,7 +994,6 @@ def occurrence_employee_form(request, occurence_id = None, template=None):
     return render_to_response(template, locals(), context_instance=RequestContext(request))
 
 
-
 @permission_required_with_403('schedule.schedule_write')
 def schedule_settings(request):
     """
@@ -937,15 +1001,24 @@ def schedule_settings(request):
         Save schedule settings, slot time, format display.
     """
 
+    # organization
     object = request.user.get_profile().org_active
 
     if request.POST:
-        messages.success(request, _(u'Configuração da salvo com sucesso'))
-        object.time_slot_schedule = request.POST.get('time_slot_schedule')
+
+        object.default_schedule_view = request.POST.get('default_schedule_view')
+        messages.success(request, _(u'Configuração gravada com sucesso!'))
+
+        if not object.time_slot_schedule == request.POST.get('time_slot_schedule'):
+            object.time_slot_schedule = request.POST.get('time_slot_schedule')
+            messages.info(request, _(u'Com a alteração do intervalo, alguns eventos podem não aparecer na agenda diária devido a nova grade de horário.'))
+
         object.save()
 
     return render_to_response('schedule/schedule_settings.html', dict(
                 object = object,
                 time_slot_schedule = TIME_SLOT_SCHEDULE,
+                default_schedule_view = DEFAULT_SCHEDULE_VIEW,
                 tab_settings_class = 'active',
+                places_list = Place.objects.active().filter(organization=request.user.get_profile().org_active.id),
             ), context_instance=RequestContext(request) )

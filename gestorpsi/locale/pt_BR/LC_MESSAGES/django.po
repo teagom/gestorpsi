@@ -78,7 +78,7 @@ msgstr "Admissão salva com sucesso"
 #: templates/contact/contact_organization_form.html:61
 #: templates/contact/contact_professional_form.html:77
 #: templates/device/device_type_form.html:57
-#: templates/meta/people_indentification.html:37
+#: templates/meta/people_identification.html:37
 #: templates/service/service_form.html:89
 #: templates/tags/address_book_organization_mini.html:24
 #: templates/tags/address_book_professional_mini.html:35
@@ -153,7 +153,7 @@ msgstr "Sigla do estabelecimento"
 
 #: authentication/views.py:63
 msgid "Invalid username or password"
-msgstr "Nome de usuário ou senha inválida"
+msgstr "Nome de usuário ou senha inválido."
 
 #: authentication/views.py:73
 msgid ""
@@ -1311,7 +1311,7 @@ msgstr "Escolha um plano de acesso"
 
 #: gcm/forms/auth.py:28
 msgid "Phone Number"
-msgstr "Telefone"
+msgstr "Numero Telefone"
 
 #: gcm/forms/auth.py:28
 msgid "Enter your phone number with area code here"
@@ -1327,7 +1327,7 @@ msgstr "Informe aqui o número de seu CPF"
 
 #: gcm/forms/auth.py:30
 msgid "Address Street"
-msgstr "Logradouro"
+msgstr "Endereço"
 
 #: gcm/forms/auth.py:30
 msgid "Enter your address here"
@@ -1754,11 +1754,6 @@ msgstr "Nome"
 msgid "Profissão"
 msgstr "Profissão"
 
-#: gcm/templates/gcm/org_form.html:128 gcm/templates/gcm/org_list.html:36
-#: gcm/templates/gcm/org_pen_list.html:37
-msgid "Fones"
-msgstr "Telefones"
-
 #: gcm/templates/gcm/org_form.html:130
 msgid "Profissional responsável"
 msgstr "Profissional Responsável"
@@ -1828,10 +1823,6 @@ msgstr "Dados do profissional"
 #: gcm/templates/gcm/org_pen_detail.html:26
 msgid "CPF"
 msgstr "CPF"
-
-#: gcm/templates/gcm/org_pen_detail.html:28
-msgid "Fone"
-msgstr "Telefone"
 
 #: gcm/templates/gcm/org_pen_detail.html:30
 msgid "Endereco"
@@ -2293,7 +2284,7 @@ msgid "Test sheet"
 msgstr "Folha de testes"
 
 #: referral/models.py:63 templates/meta/company_indentification.html:21
-#: templates/meta/people_indentification.html:24
+#: templates/meta/people_identification.html:24
 msgid "Photo"
 msgstr "Foto"
 
@@ -2401,7 +2392,7 @@ msgstr "Detalhes do Desligamento"
 #: templates/organization/organization_form.html:366
 #: templates/service/service_group_form.html:74 templates/tags/invoice.html:47
 msgid "Status"
-msgstr "Status"
+msgstr "Situação"
 
 #: referral/views.py:63
 msgid " - Student"
@@ -2441,6 +2432,12 @@ msgstr ""
 #: report/forms.py:48
 msgid "Include client list"
 msgstr "Lista de Clientes"
+
+msgid "Include client list active"
+msgstr "Lista de Cliente ativo"
+
+msgid "Include client list inactive"
+msgstr "Lista de Cliente inativo"
 
 #: report/forms.py:48
 msgid "If selected will a list of clients for each report sub-item"
@@ -2717,13 +2714,13 @@ msgid "Subscriptions to professional %s"
 msgstr "Inscrições para o profissional %s"
 
 #: report/models.py:986 templates/client/client_print_record_data_tag.html:8
-#: templates/meta/people_indentification.html:21
+#: templates/meta/people_identification.html:21
 #: templates/tags/people_identification.html:30
 msgid "Male"
 msgstr "Masculino"
 
 #: report/models.py:987 templates/client/client_print_record_data_tag.html:7
-#: templates/meta/people_indentification.html:22
+#: templates/meta/people_identification.html:22
 #: templates/tags/people_identification.html:33
 msgid "Female"
 msgstr "Feminino"
@@ -4348,6 +4345,13 @@ msgstr "Ocupação"
 msgid "Workplace"
 msgstr "Local de trabalho"
 
+#: templates/careprofessional/student_form.html
+msgid "Workplace available"
+msgstr "Local de trabalho disponível"
+
+msgid "Workplace selected"
+msgstr "Local de trabalho selecionado"
+
 #: templates/client/client_print.html:225
 msgid "Working Hours"
 msgstr "Horário de trabalho"
@@ -4710,14 +4714,10 @@ msgstr "CNAE"
 msgid "Document"
 msgstr "Documento(s)"
 
-#: templates/client/client_print_record_data_tag.html:35
-msgid "Phone"
-msgstr "Telefone(s)"
-
 #: templates/client/client_print_record_data_tag.html:40
 #: templates/organization/organization_form.html:29
 msgid "Address"
-msgstr "Endereço(s)"
+msgstr "Endereço"
 
 #: templates/client/client_print_record_data_tag.html:59
 msgid "Website"
@@ -5428,7 +5428,7 @@ msgstr "Funcionário(s)"
 #: templates/frontend/frontend_careprofessional_start.html:24
 #: templates/frontend/frontend_start.html:24
 msgid "Welcome"
-msgstr "Bem Vindo ao GestorPsi!"
+msgstr "Bem vindo"
 
 #: templates/frontend/frontend_careprofessional_start.html:27
 msgid "My services"
@@ -5449,6 +5449,9 @@ msgstr "Sem serviços cadastrados"
 #: templates/frontend/frontend_careprofessional_start.html:70
 msgid "My today's schedule"
 msgstr "Minha agenda"
+
+msgid "Today's schedule"
+msgstr "Agenda de hoje"
 
 #: templates/frontend/frontend_careprofessional_start.html:97
 msgid "There is no events today"
@@ -5647,7 +5650,7 @@ msgstr "Ver mensagem"
 
 #: templates/messages/view.html:37
 #: templates/meta/company_indentification.html:23
-#: templates/meta/people_indentification.html:26
+#: templates/meta/people_identification.html:26
 #: templates/organization/organization_form.html:70
 #: templates/tags/address.html:99 templates/tags/document.html:59
 #: templates/tags/email.html:36 templates/tags/im.html:36
@@ -5725,12 +5728,12 @@ msgstr "Documentos"
 msgid "Add Document"
 msgstr "Adicionar Documento"
 
-#: templates/meta/people_indentification.html:36
+#: templates/meta/people_identification.html:36
 #: templates/users/users_form.html:57
 msgid "Personal Identification"
 msgstr "Identificação Pessoal"
 
-#: templates/meta/people_indentification.html:40
+#: templates/meta/people_identification.html:40
 msgid "Nickname"
 msgstr "Apelido"
 
@@ -5762,6 +5765,11 @@ msgstr "Selecione um estado"
 #: templates/organization/organization_form.html:219
 msgid "Phones"
 msgstr "Telefones"
+
+#: gcm/templates/gcm/org_form.html:128 gcm/templates/gcm/org_list.html:36
+#: gcm/templates/gcm/org_pen_list.html:37
+msgid "Phone"
+msgstr "Telefone"
 
 #: templates/meta/phones.html:33
 #: templates/organization/organization_form.html:227
@@ -5860,8 +5868,11 @@ msgid "Dependence"
 msgstr "Dependência"
 
 #: templates/organization/organization_form.html:188
-msgid "Care Provided Type"
-msgstr "Tipo de serviço prestado"
+msgid "Care Provided Type Available"
+msgstr "Tipo de serviço prestado disponível"
+
+msgid "Care Provided Type Selected"
+msgstr "Tipo de serviço prestado selecionado"
 
 #: templates/organization/organization_form.html:196
 msgid "Education and Research Activity"
@@ -5903,7 +5914,7 @@ msgstr "Histórico de uso"
 #: templates/referral/referral_details.html:147
 #: templates/schedule/schedule_week_table.html:23
 msgid "From"
-msgstr "de"
+msgstr "De"
 
 #: templates/organization/organization_form.html:317
 #: templates/organization/organization_form.html:363
@@ -6239,20 +6250,13 @@ msgid "log in"
 msgstr "entrar em sua conta."
 
 #: templates/registration/activate.html:11
-msgid "Opppss..."
-msgstr "Opppss..."
+msgid "Sorry"
+msgstr "Desculpa"
 
 #: templates/registration/activate.html:12
-msgid ""
-"Sorry, it didn't work. Either your activation link was incorrect, or the "
-"activation key for your account has expired; activation keys are only valid "
-"for"
-msgstr ""
-"Não foi possível confirmar o seu cadastro. Alguns dos possíveis motivos para"
-" isso são:<br><br><b>Cadastro já confirmado.</b><br><b>Prazo para a "
-"confirmação excedido.</b><br><b>Endereço de ativação inválido</b><br><br><a "
-"href=/accounts/login/>Fazer Log in</a><br><a "
-"href=/accounts/register/>Realizar novo cadastro</a>"
+msgid "It didn't work. Either your activation link was incorrect, or the "
+"activation key for your account has expired; activation keys are only valid for"
+msgstr "Não foi possível confirmar o seu cadastro. Alguns dos possíveis motivos para isso são:<br><br><b>Cadastro já confirmado.</b><br><b>Prazo para a confirmação excedido.</b><br><b>Endereço de ativação inválido</b>"
 
 #: templates/registration/login.html:29
 msgid ""
@@ -6676,7 +6680,7 @@ msgstr "Identificação da Sala"
 
 #: templates/schedule/schedule_week.html:59
 msgid "Please, choose one room to book"
-msgstr "Escolha um nome para o relatório."
+msgstr "Escolha uma sala."
 
 #: templates/schedule/schedule_week.html:67
 msgid "Selecione uma sala antes de continuar"
@@ -6739,6 +6743,10 @@ msgstr "Lista de Clientes"
 #: templates/service/service_client_list.html:51
 msgid "There is no client subscribed in this service."
 msgstr "Não há cliente inscrito neste serviço."
+
+#: templates/careprofessional/careprofessional_client_list.html
+msgid "There is no client subscribed in this professional."
+msgstr "Não há cliente inscrito neste profissional."
 
 #: templates/service/service_client_list.html:70
 msgid "Referral ID"

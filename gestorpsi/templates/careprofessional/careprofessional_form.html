@@ -23,18 +23,12 @@ GNU General Public License for more details.
 {% block vertical_menu %} - {% trans "Professionals" %}{% endblock %}
 
 {% block submenu %}
-    <ul>
-        <li><a class="first" href="/careprofessional/">{% trans "all" %}</a></li>
-        {% if perms.careprofessional.careprofessional_write %}
-            <li><a class="{% if not object.id %}active{% endif %}" href="/careprofessional/add/">{% trans "add" %}</a></li>
-        {% endif %}
-        <li><a href="/careprofessional/deactive/">{% trans "Deactives" %}</a></li>
-        {% if object.id %}<li><a class="active">{{ object.person.name }}</a></li>{% endif %}
-    </ul>
+    {% include "careprofessional/careprofessional_submenu.html" %}
 {% endblock %}
 
-
 {% block core %}
+
+    {% include "tags/upload.html" %}
 
     <h2 id="title_addressbook" style="display:none"></h2>
 
@@ -48,15 +42,16 @@ GNU General Public License for more details.
     <h2 id="title_contacts" style="display:none"></h2>
     <h2 id="title_myoffice" style="display:none"></h2>
 
-    <form action="/careprofessional/{% if object.id %}{{ object.id }}/{% endif %}save/" method="post" class="form_people collapsable form_careprofessional">	
+    {% if object.id %}
+        <form action="{% url careprofessional-save-update object.id %}" method="post" />
+    {% else %}
+        <form action="{% url careprofessional-save-new %}" method="post" />
+    {% endif %}
+
         <div class="main_area">
 
-            <!-- <a href="" id="help">&nbsp;</a> -->
-            <!-- DataTypes form menu -->
+            {% include "meta/people_identification.html" %}
             
-            {% include "meta/people_indentification.html" %}
-            
-            <!-- Professional infos -->
             <fieldset id="fieldset_professional_identification">
                 <legend>{% trans "Professional Identification" %}</legend>
 
@@ -125,18 +120,17 @@ GNU General Public License for more details.
             <fieldset class="comment_form">
                 <legend>{% trans "Comments" %}</legend>
                 <label>
-                    <textarea name="comments" class="extrabig">{{ object.person.comments }}</textarea>
+                    <textarea cols="60" rows="5" name="comments">{{ object.person.comments }}</textarea>
                 </label>
             </fieldset>
 
             <br />	
         </div>
 
-        {% include "tags/careprofessional_sidebar.html" %}
+        {% include "careprofessional/careprofessional_sidebar.html" %}
 
     </form>
 
-    {% include "tags/upload.html" %}
     {% include "tags/place_mini.html" %}
     {% include "careprofessional/careprofessional_form_dialog.html" %}
 

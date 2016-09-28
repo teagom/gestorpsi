@@ -19,7 +19,7 @@ from gestorpsi.authentication.views import login_check
 from gestorpsi.referral.forms import ReferralForm
 from gestorpsi.schedule.forms import ScheduleOccurrenceForm, ScheduleSingleOccurrenceForm, OccurrenceConfirmationForm
 
-from gestorpsi.schedule.views import occurrence_view, schedule_settings, add_event, schedule_index, schedule_occurrence_listing_today, event_view, daily_occurrences, today_occurrences, occurrence_confirmation_form, occurrence_family_form, occurrence_employee_form, occurrence_group, week_view, week_view_table, occurrence_confirmation_form_group
+from gestorpsi.schedule.views import occurrence_view, schedule_settings, add_event, schedule_index, schedule_occurrence_listing_today, event_view, daily_occurrences, today_occurrences, occurrence_confirmation_form, occurrence_family_form, occurrence_employee_form, occurrence_group, week_view, week_view_table, occurrence_confirmation_form_group, diary_view
 
 urlpatterns = patterns('',
     url(
@@ -27,8 +27,14 @@ urlpatterns = patterns('',
         login_check(schedule_index), 
         name='schedule-index'
     ),
+    # diary view
+    url(
+        r'^diary/$', 
+        login_check(diary_view),
+        name='schedule-diary-view'
+    ),
 
-    # set schedule slot time
+    # settings of schedule
     url(
         r'^settings/$', 
         login_check(schedule_settings), 
@@ -38,8 +44,8 @@ urlpatterns = patterns('',
     # index, not default place
      url(
         r'^place/(?P<place>([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}))/$', 
-        login_check(schedule_index), 
-        name='schedule-index'
+        login_check(diary_view), 
+        name='schedule-diary-view'
     ),
     
     # return JSON
@@ -91,7 +97,7 @@ urlpatterns = patterns('',
     url(
         r'^week/$', 
         login_check(week_view),
-        name='swingtime-week'
+        name='schedule-week-view'
     ),
     url(
         r'^week/(\d{4})/(0?[1-9]|1[012])/([0-3]?\d)/$', 

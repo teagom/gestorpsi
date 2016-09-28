@@ -128,12 +128,11 @@ def occupation_save(request, object_id, occupation_id=0):
                                         }, context_instance=RequestContext(request))
     # occupation not found
     except:
-        messages.success(request, _('Occupation not found'))
+        messages.error(request, _('Occupation not found'))
         professions = [p for p in object.profession_set.all()]
         return render_to_response('demographic/demographic_occupation.html', {
                                         'object': object,
                                         'demographic_menu': True,
                                         'professions': professions,
                                         'profession_form': profession_form,
-                                        'clss': 'error',
                                         }, context_instance=RequestContext(request))

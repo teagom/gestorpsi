@@ -1,24 +1,21 @@
 # -*- coding: utf-8 -*-
 
-from django.conf.urls.defaults import *
+from django.conf.urls.defaults import url, patterns, include
 from django.conf import settings
 from django.contrib import admin
-#from gestorpsi.authentication.forms import RegistrationForm
-from gestorpsi.authentication.models import Profile
 from gestorpsi.frontend.views import start as frontend_start
 from django.contrib.auth.decorators import login_required
-from gestorpsi.authentication.views import gestorpsi_login
 
-from gestorpsi.settings import MEDIA_ROOT
+from gestorpsi.settings import MEDIA_ROOT, STATIC_ROOT
 
 admin.autodiscover()
 
 urlpatterns = patterns('',
     # url
     (r'^$', login_required(frontend_start)),
-    url(r'^accounts/login/$', 'gestorpsi.authentication.views.gestorpsi_login', {'template_name': 'registration/login.html'}, name='auth_login'),
 
     # registration org form
+    url(r'^accounts/login/$', 'gestorpsi.authentication.views.gestorpsi_login', {'template_name': 'authentication/authentication_login_form.html'}, name='accounts-login-form'),
     url(r'^accounts/register/$', 'gestorpsi.authentication.views.register', name='registration-register'),
     url(r'^accounts/complete/$', 'gestorpsi.authentication.views.complete', name='registration-complete'),
 
@@ -51,7 +48,7 @@ urlpatterns = patterns('',
     (r'^support/', include('gestorpsi.support.urls')),
     (r'^frontend/', include('gestorpsi.frontend.urls')),
     (r'^media/(?P<path>.*)$', 'django.views.static.serve', {'document_root': MEDIA_ROOT, 'show_indexes': False}),
-    (r'^static/(?P<path>.*)$', 'django.views.static.serve', {'document_root': MEDIA_ROOT, 'show_indexes': False}),
+    (r'^static/(?P<path>.*)$', 'django.views.static.serve', {'document_root': STATIC_ROOT, 'show_indexes': False}),
     (r'^profile/', include('gestorpsi.profile.urls')),
     (r'^util/', include('gestorpsi.util.urls')),
     (r'^chaining/', include('smart_selects.urls')),
